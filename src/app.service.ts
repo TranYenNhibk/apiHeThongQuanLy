@@ -367,14 +367,30 @@ export class AppService {
     let found = 0;
     let reqdata: object;
     await ref.once('value', function (snapshot) {
-      for (const user of Object.values(snapshot.val())) {
-        if (
-          Object(user).username === valArr[0] &&
-          Object(user).password === valArr[1]
-        ) {
-          console.log('hello');
+      // for (const user of Object.values(snapshot.val())) {
+      //   if (
+      //     Object(user).username === valArr[0] &&
+      //     Object(user).password === valArr[1]
+      //   ) {
+      //     console.log('hello');
+      //     found = 1;
+      //     reqdata = Object(user);
+      //     break;
+      //   }
+      // }
+      for(let i = 1; i < snapshot.val().length; i++){
+        if(snapshot.val()[i].username === valArr[0] && snapshot.val()[i].password === valArr[1]){
           found = 1;
-          reqdata = Object(user);
+          reqdata = {
+            userId: i,
+            username: snapshot.val()[i].username,
+            name: snapshot.val()[i].name,
+            password: snapshot.val()[i].password,
+            phone: snapshot.val()[i].phone,
+            role: snapshot.val()[i].role,
+            sex: snapshot.val()[i].sex,
+            workAt: snapshot.val()[i].workAt,
+          }
           break;
         }
       }
