@@ -133,8 +133,9 @@ export class AppService {
           } else {
             customer = customerList[snapshot.val()[i].customerId].name;
           }
-          for (let j = 1; j < snapshot.val()[i].listGoods.length; j++) {
+          for (let j = 0; j < snapshot.val()[i].listGoods.length; j++) {
             // console.log('hi')
+            if(snapshot.val()[i].listGoods[j])
             listGoods.push({
               typeId: snapshot.val()[i].listGoods[j].typeId,
               color: TypeAndColor[snapshot.val()[i].listGoods[j].typeId].color,
@@ -210,7 +211,7 @@ export class AppService {
     // console.log(data);
     var ref = db.ref('/import');
     var importId = 1;
-    await ref.once('value', function (snapshot) {
+    await ref.once('value', function (snapshot) { 
       importId = snapshot.val().length;
     });
     var warehouseId = await this.getKhoId(data.importEmployee);
