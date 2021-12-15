@@ -104,4 +104,21 @@ export class AppController {
   getProductNumber(@Req() data): any {
     return this.appService.getProductNumber(data.body);
   }
+
+  @Get('/getAllKhoInformation')
+  getAllKhoInformation(): any {
+    return this.appService.getAllKhoInformation();
+  }
+  @Get('/getAllUser')
+  getAllUser(): any {
+    return this.appService.getAllUser();
+  }
+  @Post('/postNewUser')
+  postNewUser(@Req() data): any {
+    return this.appService.postNewUser(data.body);
+  }
+  @Post('/changeUserInfor')
+  changeUserInfor(@Req() data): any {
+    return this.appService.changeUserInfor(data.body);
+  }
 }

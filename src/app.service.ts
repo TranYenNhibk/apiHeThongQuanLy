@@ -308,10 +308,12 @@ export class AppService {
         });
       }
     }
+
     var listGoods = {};
     for (let i = 0; i < listType.length; i++) {
       listGoods[listType[i]] = listFabricId[i];
     }
+
     // console.log(listGoods);
     for (let i = 0; i < listType.length; i++) {
       ref = db.ref('/warehouse/' + warehouseId + '/goods/' + listType[i]);
@@ -332,6 +334,7 @@ export class AppService {
       });
       if (stop) break;
     }
+
     console.log('false');
     if (!stop) {
       for (let i = 0; i < listType.length; i++) {
@@ -378,8 +381,11 @@ export class AppService {
       //     break;
       //   }
       // }
-      for(let i = 1; i < snapshot.val().length; i++){
-        if(snapshot.val()[i].username === valArr[0] && snapshot.val()[i].password === valArr[1]){
+      for (let i = 1; i < snapshot.val().length; i++) {
+        if (
+          snapshot.val()[i].username === valArr[0] &&
+          snapshot.val()[i].password === valArr[1]
+        ) {
           found = 1;
           reqdata = {
             userId: i,
@@ -390,7 +396,7 @@ export class AppService {
             role: snapshot.val()[i].role,
             sex: snapshot.val()[i].sex,
             workAt: snapshot.val()[i].workAt,
-          }
+          };
           break;
         }
       }
@@ -465,6 +471,30 @@ export class AppService {
     });
     return khoList;
   }
+
+  async getAllKhoInformation(): Promise<any> {
+    const db = admin.database();
+    const returnVal = [];
+    const keyList = [];
+    let temp = 0;
+    const refWarehouse = db.ref('/warehouse');
+    await refWarehouse.once('value', function (snapshot) {
+      for (const key in snapshot.val()) {
+        keyList.push(key);
+      }
+      for (const value of Object.values(snapshot.val())) {
+        returnVal.push({
+          address: Object(value).address,
+          status: Object(value).status,
+          key: keyList[temp],
+          name: 'Kho ' + keyList[temp],
+        });
+        temp++;
+      }
+    });
+    return returnVal;
+  }
+
   async getProvider(): Promise<any> {
     const db = admin.database();
     const ref = db.ref('/Provider');
@@ -805,6 +835,7 @@ export class AppService {
         refTypeAndColor = db.ref('/TypeAndColor');
       }
     });
+
     await refUser.once('value', function (snapshot) {
       temp = 0;
       for (const key in snapshot.val()) {
@@ -860,5 +891,78 @@ export class AppService {
       listGoods: listOfGood,
     });
     return 'Thành công';
+  }
+  async postNewUser(newUserInformation: any): Promise<any> {
+    const db = admin.database();
+    const workAtList = [];
+    let childNumber = 0;
+    const refUser = db.ref('/user');
+    if (newUserInformation) {
+      for (const value of Object(newUserInformation).workAt) {
+        workAtList.push({ khoId: Number(value.key) });
+      }
+    }
+
+    await refUser.once('value', function (snapshot) {
+      childNumber = snapshot.numChildren();
+    });
+    console.log(childNumber);
+    await refUser.child(String(childNumber + 1)).set({
+      birthday: newUserInformation.dob,
+      name: newUserInformation.name,
+      password: '123456',
+      phone: newUserInformation.phone,
+      sex: newUserInformation.sex,
+      username: newUserInformation.username,
+      workAt: workAtList,
+    });
+    console.log(workAtList);
+    return 'Thành công';
+  }
+  async getAllUser(): Promise<any> {
+    const userArr = [];
+    const userRef = db.ref('/user');
+    await userRef.once('value', function (snapshot) {
+      for (const value of Object.values(snapshot.val())) {
+        userArr.push(value);
+      }
+    });
+    console.log(userArr);
+    return userArr;
+  }
+  async changeUserInfor(userInfor: any): Promise<any> {
+    console.log(userInfor);
+    const userKey = [];
+    const userRef = db.ref('/user');
+    let count = 0;
+    const workAt = [null];
+    for (const value of userInfor.workAt) {
+      console.log(value);
+      workAt.push({ khoId: Number(value) });
+    }
+    console.log('dob', userInfor.dob);
+    console.log(workAt);
+    await userRef.once('value', function (snapshot) {
+      for (const key in snapshot.val()) {
+        userKey.push(key);
+      }
+      for (const value of Object.values(snapshot.val())) {
+        if (Object(value).username === userInfor.username) {
+          userRef.child(String(userKey[count])).set({
+            birthday: userInfor.dob,
+            name: userInfor.name,
+            password: '123456',
+            phone: userInfor.phone,
+            sex: userInfor.sex,
+            role: userInfor.role === 'qli' ? 'manager' : 'stockkeeper',
+            username: userInfor.username,
+            workAt: workAt,
+          });
+        }
+        count++;
+      }
+    });
+
+    return userInfor;
   }
 }
