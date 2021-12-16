@@ -980,7 +980,7 @@ export class AppService {
       }
     });
 
-    return userInfor;
+    return 'Thành công';
   }
   async getNotifications(data: any): Promise<any> {
     var receiverId = data.userId;
@@ -1065,7 +1065,7 @@ export class AppService {
     console.log('type ', listTypesId);
     console.log('fabric ', listFabric);
     await ref.once('value', function (snapshot) {
-      if(snapshot.val()) count = snapshot.val().length;
+      if (snapshot.val()) count = snapshot.val().length;
     });
     await ref.child(String(count)).set({
       time: time,
