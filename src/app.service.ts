@@ -33,7 +33,7 @@ export class AppService {
     var ref_str = '/user/' + data + '/workAt';
     const ref = db.ref(ref_str);
     var listKhoId = [];
-    // console.log(data);
+    console.log(data);
     await ref.once('value', function (snapshot) {
       for (let i = 0; i < snapshot.val().length; i++) {
         if (snapshot.val()[i] != null) listKhoId.push(snapshot.val()[i].khoId);
@@ -135,13 +135,14 @@ export class AppService {
           }
           for (let j = 0; j < snapshot.val()[i].listGoods.length; j++) {
             // console.log('hi')
-            if(snapshot.val()[i].listGoods[j])
-            listGoods.push({
-              typeId: snapshot.val()[i].listGoods[j].typeId,
-              color: TypeAndColor[snapshot.val()[i].listGoods[j].typeId].color,
-              type: TypeAndColor[snapshot.val()[i].listGoods[j].typeId].type,
-              number: snapshot.val()[i].listGoods[j].number,
-            });
+            if (snapshot.val()[i].listGoods[j])
+              listGoods.push({
+                typeId: snapshot.val()[i].listGoods[j].typeId,
+                color:
+                  TypeAndColor[snapshot.val()[i].listGoods[j].typeId].color,
+                type: TypeAndColor[snapshot.val()[i].listGoods[j].typeId].type,
+                number: snapshot.val()[i].listGoods[j].number,
+              });
           }
 
           result.push({
@@ -215,14 +216,14 @@ export class AppService {
       importId = snapshot.val().length;
     });
     var warehouseId = await this.getKhoId(data.importEmployee);
-    await ref.child(String(importId)).set({
-      orderId: data.orderId,
-      driver: data.driver,
-      importEmployee: data.importEmployee,
-      time: data.time,
-      note: data.note,
-      warehouseId: warehouseId[0],
-    });
+    // await ref.child(String(importId)).set({
+    //   orderId: data.orderId,
+    //   driver: data.driver,
+    //   importEmployee: data.importEmployee,
+    //   time: data.time,
+    //   note: data.note,
+    //   warehouseId: warehouseId[0],
+    // });
     var listType = [];
     var listFabric = [];
 
@@ -256,7 +257,7 @@ export class AppService {
     for (let i = 0; i < listType.length; i++) {
       listGoods[listType[i]] = listFabric[i];
     }
-    await ref.child(String(importId)).child('listGoods').set(listGoods);
+    // await ref.child(String(importId)).child('listGoods').set(listGoods);
     var count = 0;
     for (let i = 0; i < listType.length; i++) {
       count = 0;
@@ -266,11 +267,11 @@ export class AppService {
         else count = 0;
       });
       for (let j = 1; j < listFabric[i].length; j++) {
-        await ref.child(String(count + j)).set({
-          length: listFabric[i][j].length,
-          lotNumber: listFabric[i][j].lotNumber,
-          status: 'chưa bán',
-        });
+        // await ref.child(String(count + j)).set({
+        //   length: listFabric[i][j].length,
+        //   lotNumber: listFabric[i][j].lotNumber,
+        //   status: 'chưa bán',
+        // });
       }
     }
     this.postNoti(

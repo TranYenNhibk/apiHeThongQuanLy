@@ -26,13 +26,14 @@ export class AppController {
 
   @Post('/getExportPlans')
   async getExportPlans(@Req() data): Promise<any> {
+    console.log('post data:', data.body);
     var list = await this.appService.getKhoId(data.body.userId);
     return this.appService.getExportPlans(list);
   }
 
   @Post('/getOrders')
   async getOrders(@Req() data): Promise<any> {
-    // console.log('data');
+    console.log('data: ', data.body);
     var list = await this.appService.getKhoId(data.body.userId);
     return this.appService.getOrders(list);
   }
