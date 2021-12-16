@@ -121,4 +121,13 @@ export class AppController {
   changeUserInfor(@Req() data): any {
     return this.appService.changeUserInfor(data.body);
   }
+  @Post('/getNotifications')
+  getNotifications(@Req() data): any {
+    return this.appService.getNotifications(data.body);
+  }
+
+  @Post('/changeStatus')
+  changeStatus(@Req() data): any {
+    return this.appService.changeStatus(data.body);
+  }
 }

@@ -211,7 +211,7 @@ export class AppService {
     // console.log(data);
     var ref = db.ref('/import');
     var importId = 1;
-    await ref.once('value', function (snapshot) { 
+    await ref.once('value', function (snapshot) {
       importId = snapshot.val().length;
     });
     var warehouseId = await this.getKhoId(data.importEmployee);
@@ -273,11 +273,19 @@ export class AppService {
         });
       }
     }
+    this.postNoti(
+      listType,
+      listFabric,
+      1,
+      data.time,
+      data.importEmployee,
+      warehouseId[0],
+    );
     return 'Tạo phiếu nhập hàng thành công';
   }
 
   async postExport(data: any) {
-    // console.log(data.list);
+    console.log(data);
     var ref = db.ref('/export');
     var stop = 0;
     var exportId = 1;
@@ -309,24 +317,22 @@ export class AppService {
         });
       }
     }
-
     var listGoods = {};
     for (let i = 0; i < listType.length; i++) {
       listGoods[listType[i]] = listFabricId[i];
     }
-
     // console.log(listGoods);
     for (let i = 0; i < listType.length; i++) {
       ref = db.ref('/warehouse/' + warehouseId + '/goods/' + listType[i]);
       await ref.once('value', async function (snapshot) {
         for (let j = 1; j < listFabricId[i].length; j++) {
-          console.log(
-            typeof snapshot.val()[listFabricId[i][1].fabricId].status,
-          );
-          console.log(typeof 'đã bán');
-          console.log(
-            snapshot.val()[listFabricId[i][1].fabricId].status === 'đã bán',
-          );
+          // console.log(
+          //   typeof snapshot.val()[listFabricId[i][1].fabricId].status,
+          // );
+          // console.log(typeof 'đã bán');
+          // console.log(
+          //   snapshot.val()[listFabricId[i][1].fabricId].status === 'đã bán',
+          // );
           if (snapshot.val()[listFabricId[i][j].fabricId].status === 'đã bán') {
             stop = 1;
             break;
@@ -335,8 +341,7 @@ export class AppService {
       });
       if (stop) break;
     }
-
-    console.log('false');
+    // console.log('false');
     if (!stop) {
       for (let i = 0; i < listType.length; i++) {
         ref = db.ref('/warehouse/' + warehouseId + '/goods/' + listType[i]);
@@ -344,6 +349,8 @@ export class AppService {
           await ref.child(listFabricId[i][j].fabricId).update({
             status: 'đã bán',
           });
+          console.log('sold');
+          console.log(listFabricId[i][j].fabricId);
         }
       }
       ref = db.ref('/export');
@@ -356,6 +363,14 @@ export class AppService {
         warehouseId: warehouseId[0],
       });
       await ref.child(String(exportId)).child('list').set(listGoods);
+      this.postNoti(
+        listType,
+        listFabricId,
+        0,
+        data.time,
+        data.exportEmployee,
+        warehouseId[0],
+      );
       return 'Tạo phiếu xuất hàng thành công';
     } else
       return 'Tạo phiếu xuất thất bại! Bạn đã nhập mã cây vải không còn lưu trữ trong kho (đã bán)! Vui lòng nhập lại!';
@@ -965,5 +980,97 @@ export class AppService {
     });
 
     return userInfor;
+  }
+  async getNotifications(data: any): Promise<any> {
+    var receiverId = data.userId;
+    var warehouseId = await this.getKhoId(receiverId);
+    var ref = db.ref('/Notification');
+    var result = [];
+    await ref.once('value', function (snapshot) {
+      if (snapshot.val())
+        for (let j = 0; j < warehouseId.length; j++)
+          for (let i = 0; i < snapshot.val().length; i++) {
+            if (
+              snapshot.val()[i] &&
+              snapshot.val()[i].warehouseId == warehouseId[j]
+            ) {
+              result.push({
+                content: snapshot.val()[i].content,
+                read: snapshot.val()[i].read,
+                time: snapshot.val()[i].time,
+                number: i,
+              });
+            }
+          }
+      else return 'None';
+    });
+    console.log('test ', warehouseId);
+    return result;
+  }
+
+  async changeStatus(data: any) {
+    var ref = db.ref('/Notification/' + data.notification);
+    await ref.update({
+      read: 1,
+    });
+    return 'success';
+  }
+
+  async postNoti(
+    listTypesId: any,
+    listFabric: any,
+    notiType: any,
+    time: any,
+    employeeId: any,
+    warehouseId: any,
+  ) {
+    var ref = db.ref('/TypeAndColor');
+    var type = [];
+    await ref.once('value', function (snapshot) {
+      type = snapshot.val();
+    });
+    var content = '';
+    ref = db.ref('/user/' + employeeId);
+    await ref.once('value', function (snapshot) {
+      content += snapshot.val().name;
+    });
+    if (notiType == 0) {
+      //export Noti
+      content += ' đã xuất';
+    } else content += ' đã nhập'; //import Noti
+    let count = listFabric[0].length;
+    content =
+      content +
+      ' ' +
+      String(count - 1) +
+      ' cây vải ' +
+      type[listTypesId[0]].type +
+      ' ' +
+      type[listTypesId[0]].color;
+    for (let i = 1; i < listTypesId.length; i++) {
+      let count = listFabric[i].length;
+      content =
+        content +
+        ', ' +
+        String(count - 1) +
+        ' cây vải ' +
+        type[listTypesId[i]].type +
+        ' ' +
+        type[listTypesId[i]].color;
+    }
+    content = content + ' ở kho ' + String(warehouseId);
+    ref = db.ref('/Notification');
+    count = 1;
+    console.log('type ', listTypesId);
+    console.log('fabric ', listFabric);
+    await ref.once('value', function (snapshot) {
+      if(snapshot.val()) count = snapshot.val().length;
+    });
+    await ref.child(String(count)).set({
+      time: time,
+      read: 0,
+      content: content,
+      warehouseId: warehouseId,
+    });
   }
 }
