@@ -62,7 +62,6 @@ export class AppController {
   }
   @Post('/getwarehouse')
   getWarehouse(@Req() data): any {
-    console.log(data);
     return this.appService.getWarehouse(data.body);
   }
 
@@ -79,17 +78,34 @@ export class AppController {
   getAllKho(): any {
     return this.appService.getAllKho();
   }
+
+  @Get('/getWarehouseTypeAndColor')
+  getWarehouseTypeAndColor(): any {
+    return this.appService.getWarehouseTypeAndColor();
+  }
   @Post('/getTypeAndColor')
   getTypeAndColor(@Req() data): any {
     return this.appService.getTypeAndColor(data.body);
   }
-
+  @Get('/getAllTypeAndColor')
+  getAllTypeAndColor(): any {
+    return this.appService.getAllTypeAndColor();
+  }
   @Post('/postOrder')
   addNewOrder(@Req() data): any {
     console.log(data.body);
     return this.appService.postOrder(data.body);
   }
 
+  @Post('/getOrder')
+  getOrder(@Req() data): any {
+    return this.appService.getOrder(data.body);
+  }
+
+  @Post('/getManagerExportPlans')
+  getManagerExportPlans(): any {
+    return this.appService.getManagerExportPlans();
+  }
   @Post('/postExportPlan')
   addNewExportPlan(@Req() data): any {
     console.log(data.body);
