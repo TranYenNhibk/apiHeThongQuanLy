@@ -60,18 +60,26 @@ export class AppController {
     // console.log('post data:', data.body);
     return this.appService.checkLoginUser(data.body);
   }
+
+  @Post('/logout')
+  logOutUser(@Req() data): any {
+    // console.log('post data:', data.body);
+    return this.appService.logOutUser(data.body);
+  }
+
   @Post('/getwarehouse')
   getWarehouse(@Req() data): any {
     return this.appService.getWarehouse(data.body);
   }
 
-  @Get('/getprovider')
-  getProvider(): any {
-    return this.appService.getProvider();
+  @Post('/getprovider')
+  getProvider(@Req() data): any {
+    return this.appService.getProvider(data.body);
   }
-  @Get('/getCustomer')
-  getCustomer(): any {
-    return this.appService.getCustomer();
+
+  @Post('/getCustomer')
+  getCustomer(@Req() data): any {
+    return this.appService.getCustomer(data.body);
   }
 
   @Get('/getAllKho')
@@ -79,9 +87,9 @@ export class AppController {
     return this.appService.getAllKho();
   }
 
-  @Get('/getWarehouseTypeAndColor')
-  getWarehouseTypeAndColor(): any {
-    return this.appService.getWarehouseTypeAndColor();
+  @Post('/getWarehouseTypeAndColor')
+  getWarehouseTypeAndColor(@Req() data): any {
+    return this.appService.getWarehouseTypeAndColor(data.body);
   }
   @Post('/getTypeAndColor')
   getTypeAndColor(@Req() data): any {
@@ -122,10 +130,11 @@ export class AppController {
     return this.appService.getProductNumber(data.body);
   }
 
-  @Get('/getAllKhoInformation')
-  getAllKhoInformation(): any {
-    return this.appService.getAllKhoInformation();
+  @Post('/getAllKhoInformation')
+  getAllKhoInformation(@Req() data): any {
+    return this.appService.getAllKhoInformation(data.body);
   }
+
   @Get('/getAllUser')
   getAllUser(): any {
     return this.appService.getAllUser();
