@@ -110,9 +110,19 @@ export class AppController {
     return this.appService.getOrder(data.body);
   }
 
+  @Post('/getImport')
+  getImport(@Req() data): any {
+    return this.appService.getImport(data.body);
+  }
+
+  @Post('/getExport')
+  getExport(@Req() data): any {
+    return this.appService.getExport(data.body);
+  }
+
   @Post('/getManagerExportPlans')
-  getManagerExportPlans(): any {
-    return this.appService.getManagerExportPlans();
+  getManagerExportPlans(@Req() data): any {
+    return this.appService.getManagerExportPlans(data.body);
   }
   @Post('/postExportPlan')
   addNewExportPlan(@Req() data): any {
@@ -155,5 +165,10 @@ export class AppController {
   @Post('/changeStatus')
   changeStatus(@Req() data): any {
     return this.appService.changeStatus(data.body);
+  }
+
+  @Post('/getSoldProduct')
+  getSoldProduct(@Req() data): any {
+    return this.appService.getSoldProduct(data.body);
   }
 }
