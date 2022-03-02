@@ -38,6 +38,7 @@ export class AppService {
     var listKhoId = [];
     console.log(data);
     await ref.once('value', function (snapshot) {
+      if(snapshot.val())
       for (let i = 0; i < snapshot.val().length; i++) {
         if (snapshot.val()[i] != null) listKhoId.push(snapshot.val()[i].khoId);
       }
@@ -184,7 +185,7 @@ export class AppService {
         if (snapshot.val()[i].warehouseId === data[0]) {
           if (snapshot.val()[i].reason === 'Chuyển kho') {
             provider = 'Kho ' + snapshot.val()[i].providerId;
-          } else {
+          } else { 
             provider = providerList[snapshot.val()[i].providerId].name;
           }
           for (let j = 0; j < snapshot.val()[i].listGoods.length; j++) {
@@ -399,11 +400,12 @@ export class AppService {
         ) {
           found = 1;
           role = snapshot.val()[i].role;
+          console.log('i', i);
           reqdata = {
             userId: i,
             username: snapshot.val()[i].username,
             name: snapshot.val()[i].name,
-            password: snapshot.val()[i].password,
+            password: snapshot.val()[i].password, 
             phone: snapshot.val()[i].phone,
             role: snapshot.val()[i].role,
             sex: snapshot.val()[i].sex,
@@ -2021,5 +2023,22 @@ export class AppService {
       content: content,
       warehouseId: warehouseId,
     });
+  }
+
+  async checkAuthentication(reqData:any): Promise<any> {
+    const db = admin.database();
+    const refAuthentication = db.ref('/Authentication');
+    const isValid = await refAuthentication.once('value', function (snapshot) {
+      for (const val of Object.values(snapshot.val())) {
+        if (
+          Object(val).username === Object(reqData).username &&
+          Object(val).token === Object(reqData).token
+        ) {
+          return true;
+        }
+      }
+      return false;
+    });
+    return isValid;
   }
 }
