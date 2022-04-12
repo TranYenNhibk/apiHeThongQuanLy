@@ -35,16 +35,22 @@ export class AppController {
 
   @Post('/getExportPlans')
   async getExportPlans(@Req() data): Promise<any> {
-    console.log('post data:', data.body);
-    var list = await this.appService.getKhoId(data.body.userId);
-    return this.appService.getExportPlans(list);
+    var isValid = await this.appService.checkAuthentication(data.body);
+    if(isValid){
+      var list = await this.appService.getKhoId(data.body.userId);
+      return this.appService.getExportPlans(list);
+    }
+    else return "Không hợp lệ";
   }
 
   @Post('/getOrders')
   async getOrders(@Req() data): Promise<any> {
-    console.log('data: ', data.body);
-    var list = await this.appService.getKhoId(data.body.userId);
-    return this.appService.getOrders(list);
+    var isValid = await this.appService.checkAuthentication(data.body);
+    if(isValid){
+      var list = await this.appService.getKhoId(data.body.userId);
+      return this.appService.getOrders(list);
+    }
+    else return "Không hợp lệ";
   }
 
   @Post('/getExportPlan')

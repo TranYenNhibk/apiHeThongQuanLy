@@ -2321,4 +2321,21 @@ export class AppService {
       warehouseId: warehouseId,
     });
   }
+
+  async checkAuthentication(reqData: any): Promise<any> {
+    const db = admin.database();
+    const refAuthentication = db.ref('/Authentication');
+    const isValid = await refAuthentication.once('value', function (snapshot) {
+      for (const val of Object.values(snapshot.val())) {
+        if (
+          Object(val).username === Object(reqData).username &&
+          Object(val).token === Object(reqData).token
+        ) {
+          return true;
+        }
+      }
+      return false;
+    });
+    return isValid;
+  }
 }
