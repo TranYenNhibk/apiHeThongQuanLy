@@ -4,6 +4,7 @@ import * as admin from 'firebase-admin';
 import { initializeApp } from 'firebase-admin/app';
 import { ConnectableObservable } from 'rxjs';
 import { getHeapSnapshot } from 'v8';
+import { HttpStatus } from '@nestjs/common';
 
 // import { getDatabase } from 'firebase-admin/database';
 // import { HttpModule, HttpService } from '@nestjs/axios';
@@ -33,13 +34,17 @@ export class AppService {
   }
 
   async getKhoId(data: any) {
-    var ref_str = '/user/' + data + '/workAt';
+    const ref_str = '/user/' + data + '/workAt';
     const ref = db.ref(ref_str);
-    var listKhoId = [];
-    console.log(data);
+    const listKhoId = [];
     await ref.once('value', function (snapshot) {
-      for (let i = 0; i < snapshot.val().length; i++) {
-        if (snapshot.val()[i] != null) listKhoId.push(snapshot.val()[i].khoId);
+      if (snapshot.val()) {
+        for (let i = 0; i < snapshot.val().length; i++) {
+          if (snapshot.val()[i]) {
+            if (snapshot.val()[i] != null)
+              listKhoId.push(snapshot.val()[i].khoId);
+          }
+        }
       }
     });
     return listKhoId;
@@ -389,28 +394,32 @@ export class AppService {
     }
     let found = 0;
     let role = '';
+
     let reqdata: object;
     const token = jwt.sign({ password: valArr[1] }, 'qlkhoPriavteKey');
     await ref.once('value', function (snapshot) {
-      for (let i = 1; i < snapshot.val().length; i++) {
-        if (
-          snapshot.val()[i].username === valArr[0] &&
-          snapshot.val()[i].password === valArr[1]
-        ) {
-          found = 1;
-          role = snapshot.val()[i].role;
-          reqdata = {
-            userId: i,
-            username: snapshot.val()[i].username,
-            name: snapshot.val()[i].name,
-            password: snapshot.val()[i].password,
-            phone: snapshot.val()[i].phone,
-            role: snapshot.val()[i].role,
-            sex: snapshot.val()[i].sex,
-            workAt: snapshot.val()[i].workAt,
-            token: token,
-          };
-          break;
+      if (snapshot.val()) {
+        for (let i = 1; i < snapshot.val().length; i++) {
+          if (
+            snapshot.val()[i].username === valArr[0] &&
+            snapshot.val()[i].password === valArr[1]
+          ) {
+            found = 1;
+            role = snapshot.val()[i].role;
+            reqdata = {
+              userId: i,
+              username: snapshot.val()[i].username,
+              name: snapshot.val()[i].name,
+              password: snapshot.val()[i].password,
+              phone: snapshot.val()[i].phone,
+              role: snapshot.val()[i].role,
+              birthday: snapshot.val()[i].birthday,
+              sex: snapshot.val()[i].sex,
+              workAt: snapshot.val()[i].workAt,
+              token: token,
+            };
+            break;
+          }
         }
       }
     });
@@ -421,7 +430,11 @@ export class AppService {
       if (snapshot.val()) {
         for (const key in snapshot.val()) authenKey.push(key);
       }
+      console.log('authen', authenKey);
     });
+    console.log('role', role);
+    console.log('token', tokenNumber);
+    console.log('username', valArr[0]);
     const child = ++authenKey[authenKey.length - 1];
     await refAuthentication.child(String(child)).set({
       username: Object(logreq).username,
@@ -429,7 +442,7 @@ export class AppService {
       role: role,
     });
     if (found) return reqdata;
-    return 'No found';
+    else return 'No found';
   }
 
   async logOutUser(logreq: object): Promise<any> {
@@ -456,25 +469,24 @@ export class AppService {
     return 'Không hợp lệ';
   }
 
-  async getWarehouse(userInfo: object): Promise<any> {
+  async getWarehouse(userInfo: any, res: any): Promise<any> {
     const db = admin.database();
-
     const userRef = db.ref('/user');
     const refAuthentication = db.ref('/Authentication');
-
+    console.log(userInfo);
     const khoArray = [];
     const reqdata = [];
 
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(userInfo).username &&
-          Object(val).token === Object(userInfo).token
-        ) {
-          return true;
-        }
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(userInfo).username &&
+        val.token === Object(userInfo).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     if (isValid) {
       await userRef.once('value', function (snapshot) {
@@ -490,17 +502,24 @@ export class AppService {
       for (const khoid of khoArray) {
         const ref = db.ref('/warehouse/' + khoid);
         await ref.once('value', function (snapshot) {
-          reqdata.push({
-            key: khoid,
-            name: 'Kho ' + khoid,
-            address: snapshot.val().address,
-            square: snapshot.val().square,
-            status: snapshot.val().status,
-          });
+          if (snapshot.val()) {
+            reqdata.push({
+              key: khoid,
+              name: snapshot.val().name,
+              address: snapshot.val().address,
+              square: snapshot.val().square,
+              status: snapshot.val().status,
+            });
+          }
         });
       }
-      return reqdata;
+
+      return res.status(HttpStatus.OK).json({
+        message: reqdata,
+        statusCode: '200',
+      });
     } else {
+      console.log('123');
       return 'Không hợp lệ';
     }
   }
@@ -510,17 +529,16 @@ export class AppService {
     const customerList = [];
     const customerRef = db.ref('/customer');
     const refAuthentication = db.ref('/Authentication');
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(reqData).username &&
-          Object(val).token === Object(reqData).token &&
-          Object(val).role === 'manager'
-        ) {
-          return true;
-        }
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     if (isValid) {
       await customerRef.once('value', function (snapshot) {
@@ -532,7 +550,65 @@ export class AppService {
     }
     return 'Không hợp lệ';
   }
-
+  async getTotalProductNumberAndLength(reqData: any): Promise<any> {
+    const refAuthentication = db.ref('/Authentication');
+    const userRef = db.ref('/user');
+    const snapshot = await refAuthentication.once('value');
+    let isValid = false;
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
+      }
+    });
+    const khoList = [];
+    if (isValid) {
+      await userRef.once('value', function (snapshot) {
+        for (const value of Object.values(snapshot.val())) {
+          if (value) {
+            if (Object(value).username == Object(reqData).username) {
+              for (const val of Object(value).workAt) {
+                if (val) {
+                  khoList.push(val.khoId);
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+    const returnValue = [];
+    for (const val of khoList) {
+      let totalNumber = 0;
+      let totalLength = 0;
+      const warehouseRef = db.ref('/warehouse/' + val + '/goods');
+      await warehouseRef.once('value', function (snapshot) {
+        if (snapshot.val()) {
+          for (const value of Object.values(snapshot.val())) {
+            if (value) {
+              for (const item of Object.values(value)) {
+                if (item) {
+                  if (item.status === 'chưa bán') {
+                    totalNumber++;
+                    totalLength += Number(item.length);
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+      returnValue.push({
+        kho: 'Kho ' + val,
+        number: totalNumber,
+        length: Math.round(totalLength * 100) / 100,
+      });
+    }
+    return returnValue;
+  }
   async getWarehouseTypeAndColor(reqData: any): Promise<any> {
     const id = 1;
     const username = 'kdat0310';
@@ -548,16 +624,16 @@ export class AppService {
     const khoList = [];
     let index = 0;
     const typeAndColorRef = db.ref('/TypeAndColor');
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(reqData).username &&
-          Object(val).token === Object(reqData).token
-        ) {
-          return true;
-        }
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
 
     if (isValid) {
@@ -616,23 +692,27 @@ export class AppService {
             snapshot.val().goods !== null
           ) {
             for (const key in snapshot.val().goods) {
-              productKey.push(key);
+              if (key) {
+                productKey.push(key);
+              }
             }
             let value: any;
             for (value of Object.values(snapshot.val().goods)) {
-              let countTemp = 0;
-              value.forEach((item: any) => {
-                if (item.status === 'chưa bán') {
-                  countTemp++;
-                }
-              });
-              warehouseGoods.push({
-                listGoods: value,
-                typeAndColor: findTypeAndColor(productKey[count]),
-                number: countTemp,
-                warehouseId: val,
-              });
-              count++;
+              if (value) {
+                let countTemp = 0;
+                value.forEach((item: any) => {
+                  if (item.status === 'chưa bán') {
+                    countTemp++;
+                  }
+                });
+                warehouseGoods.push({
+                  listGoods: value,
+                  typeAndColor: findTypeAndColor(productKey[count]),
+                  number: countTemp,
+                  warehouseId: val,
+                });
+                count++;
+              }
             }
           }
         });
@@ -650,7 +730,9 @@ export class AppService {
     const customerRef = db.ref('/warehouse');
     await customerRef.once('value', function (snapshot) {
       for (const key in snapshot.val()) {
-        keyList.push(key);
+        if (key) {
+          keyList.push(key);
+        }
       }
       for (const value of Object.values(snapshot.val())) {
         //if (Object(value).status === 'Bình thường') {
@@ -670,16 +752,16 @@ export class AppService {
     const returnVal = [];
     const keyList = [];
     let temp = 0;
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(reqData).username &&
-          Object(val).token === Object(reqData).token
-        ) {
-          return true;
-        }
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     const refWarehouse = db.ref('/warehouse');
     if (isValid) {
@@ -707,25 +789,27 @@ export class AppService {
     const ref = db.ref('/Provider');
     const refAuthentication = db.ref('/Authentication');
     const resdata = [];
-    console.log(typeof resdata);
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(reqData).username &&
-          Object(val).token === Object(reqData).token &&
-          Object(val).role === 'manager'
-        ) {
-          return true;
-        }
+    console.log(typeof resdata, '123');
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     if (isValid) {
       await ref.once('value', function (snapshot) {
         for (const provider of snapshot.val()) {
-          resdata.push(provider);
+          if (provider) {
+            resdata.push(provider);
+          }
         }
       });
+
       console.log(typeof resdata);
       return resdata;
     }
@@ -784,16 +868,16 @@ export class AppService {
     let temp = 0;
     const refWarehouse = db.ref('/warehouse');
     const keyList = [];
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(reqData).username &&
-          Object(val).token === Object(reqData).token
-        ) {
-          return true;
-        }
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     if (isValid) {
       await refWarehouse.once('value', function (snapshot) {
@@ -904,7 +988,6 @@ export class AppService {
   }
 
   async postOrder(orderInfo: any): Promise<any> {
-    console.log('ord', orderInfo);
     const db = admin.database();
     const ref = db.ref('/order');
     const refProvider = db.ref('/Provider');
@@ -926,17 +1009,16 @@ export class AppService {
     //     console.log(key);
     //   }
     // });
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(orderInfo).username &&
-          Object(val).token === Object(orderInfo).token &&
-          Object(val).role === 'manager'
-        ) {
-          return true;
-        }
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(orderInfo).username &&
+        val.token === Object(orderInfo).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     if (isValid) {
       const addNewType = async () => {
@@ -954,9 +1036,7 @@ export class AppService {
                   break;
                 }
               }
-              console.log('available:', available);
               if (available == 0) {
-                console.log('123');
                 refTypeAndColor.child(typeNumber + 1).set({
                   type: Object(element).kind,
                   color: Object(element).color,
@@ -1041,13 +1121,65 @@ export class AppService {
         manageId: Number(userId),
         reason: Object(orderInfo).reason,
         time: Object(orderInfo).time,
-        warehouseId: Number(Object(orderInfo).khoName.slice(-1)),
+        warehouseId: Number(Object(orderInfo).khoId),
         listGoods: listOfGood,
       });
-      console.log(orderInfo);
       return 'Thành công';
     }
     return 'Không hợp lệ';
+  }
+  async checkCapacityOrder(reqData: any, res: any): Promise<any> {
+    const refAuthentication = db.ref('/Authentication');
+    const refWarehouse = db.ref('/warehouse/1/goods');
+    const refWarehouseCapacity = db.ref('/warehouse/1/capacityWarehouse');
+    let warehouseCapacity = 0;
+    await refWarehouseCapacity.once('value', function (snapshot) {
+      warehouseCapacity = snapshot.val();
+    });
+    let totalNumber = 0;
+    let isValid = false;
+    console.log(reqData);
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      await refWarehouse.once('value', function (snapshot) {
+        for (const value of snapshot.val()) {
+          if (value) {
+            for (const item of value) {
+              if (item) {
+                if (item.status == 'chưa bán') {
+                  totalNumber++;
+                }
+              }
+            }
+          }
+        }
+      });
+      if (totalNumber + Object(reqData).number <= warehouseCapacity) {
+        return res.status(HttpStatus.OK).json({
+          message: 'Able to add',
+          statusCode: '200',
+        });
+      } else {
+        return res.status(HttpStatus.OK).json({
+          message: 'Unable to add',
+          statusCode: '200',
+        });
+      }
+    } else {
+      return res.status(HttpStatus.UNAUTHORIZED).json({
+        message: 'Unauthorize to perform this action',
+        statusCode: '401',
+      });
+    }
   }
   async getOrder(reqData: any): Promise<any> {
     const username = 'kdat0310';
@@ -1061,16 +1193,16 @@ export class AppService {
     const providerKey = [];
     let index = 0;
     const providerList = [];
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(reqData).username &&
-          Object(val).token === Object(reqData).token
-        ) {
-          return true;
-        }
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     if (isValid) {
       await userRef.once('value', function (snapshot) {
@@ -1198,7 +1330,6 @@ export class AppService {
     return 'Không hợp lệ';
   }
   async getImport(reqData: any): Promise<any> {
-    const username = 'kdat0310';
     const db = admin.database();
     const userRef = db.ref('/user');
     const importRef = db.ref('/import');
@@ -1208,24 +1339,27 @@ export class AppService {
     const khoList = [];
     let index = 0;
     const providerList = [];
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(reqData).username &&
-          Object(val).token === Object(reqData).token
-        ) {
-          return true;
-        }
+    const snapshot = await refAuthentication.once('value');
+    let isValid = false;
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     if (isValid) {
       await userRef.once('value', function (snapshot) {
         for (const value of Object.values(snapshot.val())) {
           if (value) {
-            if (Object(value).username == reqData.username) {
+            if (Object(value).username == Object(reqData).username) {
               for (const val of Object(value).workAt) {
-                if (val) khoList.push(val.khoId);
+                if (val) {
+                  khoList.push(val.khoId);
+                  console.log('khoList', khoList);
+                }
               }
             }
           }
@@ -1274,8 +1408,8 @@ export class AppService {
           }
         }
       });
+      console.log(userList);
       const findUserName = (userId: any) => {
-        const returnValue = '';
         for (const value of userList) {
           if (userId == Object(value).id) {
             return Object(value).name;
@@ -1289,8 +1423,8 @@ export class AppService {
       snapshotImport.forEach((child) => {
         importKey.push(child.key);
       });
+      let countTemp = 0;
       for (const index of importKey) {
-        let countTemp = 0;
         const value = snapshotImport.child(index).val();
 
         const goodsKeyList = [];
@@ -1304,10 +1438,12 @@ export class AppService {
             const refListGoods = db.ref(
               '/import/' + importKey[countTemp] + '/listGoods',
             );
-            await refListGoods.once('value', function (snapshot) {
+            console.log('counttemp', countTemp);
+            await refListGoods.once('value', function (snapshotRef) {
               let item: any;
-              for (item of Object.values(snapshot.val())) {
+              for (item of Object.values(snapshotRef.val())) {
                 if (item) {
+                  console.log('item', item);
                   const tempItem = item.filter((n: any) => n);
                   listGoodsList.push({
                     typeAndColor: findTypeAndColor(goodsKeyList[count]),
@@ -1319,7 +1455,7 @@ export class AppService {
               }
             });
           }
-          console.log('test 1', listGoodsList);
+          // console.log('test 1', listGoodsList);
           if (listGoodsList !== []) {
             importList.push({
               listGoods: listGoodsList,
@@ -1332,11 +1468,9 @@ export class AppService {
               note: Object(value).note,
             });
           }
-          console.log('test 2', importList);
+          // console.log('test 2', importList);
         }
         countTemp++;
-
-        console.log('test 3', importList);
       }
 
       return importList;
@@ -1354,16 +1488,16 @@ export class AppService {
     const khoList = [];
     let index = 0;
 
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(reqData).username &&
-          Object(val).token === Object(reqData).token
-        ) {
-          return true;
-        }
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     if (isValid) {
       await userRef.once('value', function (snapshot) {
@@ -1546,16 +1680,16 @@ export class AppService {
     const customerKey = [];
     let index = 0;
     const customerList = [];
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(reqData).username &&
-          Object(val).token === Object(reqData).token
-        ) {
-          return true;
-        }
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     if (isValid) {
       await userRef.once('value', function (snapshot) {
@@ -1670,7 +1804,7 @@ export class AppService {
     }
     return 'Không hợp lệ';
   }
-  // Phiếu kế hoạch xuất hàng
+  // Tạo phiếu kế hoạch xuất hàng (quản lý)
   async postExportPlan(exportPlanInfo: any): Promise<any> {
     const db = admin.database();
     const ref = db.ref('/exportPlan');
@@ -1772,38 +1906,202 @@ export class AppService {
       manageId: Number(userId),
       reason: Object(exportPlanInfo).reason,
       time: Object(exportPlanInfo).time,
-      warehouseId: Number(Object(exportPlanInfo).khoName.slice(-1)),
+      warehouseId: Number(Object(exportPlanInfo).khoId),
       listGoods: listOfGood,
     });
     return 'Thành công';
   }
-  async postNewUser(newUserInformation: any): Promise<any> {
+  async postNewUser(newUserInformation: any, res: any): Promise<any> {
     const db = admin.database();
     const workAtList = [];
     let childNumber = 0;
     const refUser = db.ref('/user');
-    if (newUserInformation) {
-      for (const value of Object(newUserInformation).workAt) {
-        workAtList.push({ khoId: Number(value.key) });
+    const refAuthentication = db.ref('/Authentication');
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(newUserInformation).validUsername &&
+        val.token === Object(newUserInformation).token
+      ) {
+        isValid = true;
       }
+    });
+    if (isValid) {
+      if (newUserInformation) {
+        for (const value of Object(newUserInformation).workAt) {
+          workAtList.push({ khoId: Number(value.key) });
+        }
+      }
+      await refUser.once('value', function (snapshot) {
+        childNumber = snapshot.numChildren();
+      });
+      console.log(childNumber);
+      await refUser.child(String(childNumber + 1)).set({
+        birthday: newUserInformation.dob,
+        name: newUserInformation.name,
+        password: '123456',
+        phone: newUserInformation.phone,
+        sex: newUserInformation.sex,
+        username: newUserInformation.username,
+        workAt: workAtList,
+      });
+      console.log(workAtList);
+      return res.status(HttpStatus.CREATED).json({
+        message: 'Thành công tạo người dùng!',
+        statusCode: '201',
+      });
     }
 
-    await refUser.once('value', function (snapshot) {
-      childNumber = snapshot.numChildren();
+    return res.status(HttpStatus.UNAUTHORIZED).json({
+      message: 'Unauthorize to perform this action',
+      statusCode: '401',
     });
-    console.log(childNumber);
-    await refUser.child(String(childNumber + 1)).set({
-      birthday: newUserInformation.dob,
-      name: newUserInformation.name,
-      password: '123456',
-      phone: newUserInformation.phone,
-      sex: newUserInformation.sex,
-      username: newUserInformation.username,
-      workAt: workAtList,
-    });
-    console.log(workAtList);
-    return 'Thành công';
   }
+
+  async postNewCustomer(newCustomerInformation: any, res: any): Promise<any> {
+    const db = admin.database();
+    const workAtList = [];
+    let childNumber = 0;
+    const refUser = db.ref('/user');
+    const refAuthentication = db.ref('/Authentication');
+    const snapshot = await refAuthentication.once('value');
+    const refCustomer = db.ref('/customer');
+    let isValid = false;
+
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(newCustomerInformation).username &&
+        val.token === Object(newCustomerInformation).token
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      const keyList = [];
+      await refCustomer.once('value', function (snapshot) {
+        for (const key in snapshot.val()) {
+          keyList.push(key);
+        }
+      });
+      const child = ++keyList[keyList.length - 1];
+      await refCustomer.child(String(child)).set({
+        name: newCustomerInformation.name,
+        address: newCustomerInformation.address,
+        phone: newCustomerInformation.phoneNumber,
+      });
+      console.log(workAtList);
+      return res.status(HttpStatus.CREATED).json({
+        message: 'Thành công tạo người dùng!',
+        statusCode: '201',
+      });
+    }
+
+    return res.status(HttpStatus.UNAUTHORIZED).json({
+      message: 'Unauthorize to perform this action',
+      statusCode: '401',
+    });
+  }
+
+  async postNewProvider(newProviderInformation: any, res: any): Promise<any> {
+    const db = admin.database();
+    const workAtList = [];
+    let childNumber = 0;
+    const refUser = db.ref('/user');
+    const refAuthentication = db.ref('/Authentication');
+    const snapshot = await refAuthentication.once('value');
+    let isValid = false;
+    const refProvider = db.ref('/Provider');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(newProviderInformation).username &&
+        val.token === Object(newProviderInformation).token
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      const keyList = [];
+      await refProvider.once('value', function (snapshot) {
+        for (const key in snapshot.val()) {
+          keyList.push(key);
+        }
+      });
+      const child = ++keyList[keyList.length - 1];
+      await refProvider.child(String(child)).set({
+        name: newProviderInformation.name,
+        address: newProviderInformation.address,
+        phone: newProviderInformation.phoneNumber,
+      });
+      console.log(workAtList);
+      return res.status(HttpStatus.CREATED).json({
+        message: 'Thành công tạo người dùng!',
+        statusCode: '201',
+      });
+    }
+
+    return res.status(HttpStatus.UNAUTHORIZED).json({
+      message: 'Unauthorize to perform this action',
+      statusCode: '401',
+    });
+  }
+
+  async postNewWarehouse(newWarehouseInformation: any, res: any): Promise<any> {
+    const db = admin.database();
+    const workAtList = [];
+    const refUser = db.ref('/user');
+    const refAuthentication = db.ref('/Authentication');
+    const snapshot = await refAuthentication.once('value');
+    let isValid = false;
+    const refWarehouse = db.ref('/warehouse');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(newWarehouseInformation).username &&
+        val.token === Object(newWarehouseInformation).token
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      const keyList = [];
+      await refWarehouse.once('value', function (snapshot) {
+        for (const key in snapshot.val()) {
+          keyList.push(key);
+        }
+      });
+      const child = ++keyList[keyList.length - 1];
+      let childNumber = 0;
+      await refWarehouse.once('value', function (snapshot) {
+        childNumber = snapshot.numChildren();
+      });
+
+      await refWarehouse.child(String(childNumber)).set({
+        name: newWarehouseInformation.name,
+        address: newWarehouseInformation.address,
+        square: newWarehouseInformation.square,
+        capacityWarehouse: newWarehouseInformation.capacityWarehouse,
+        capacityEachType: '50',
+        time: '8:00 - 21:00',
+        goods: new Array(1).fill(0),
+        status: 'Bình thường',
+      });
+      console.log(workAtList);
+      return res.status(HttpStatus.CREATED).json({
+        message: 'Thành công tạo kho!',
+        statusCode: '201',
+      });
+    }
+
+    return res.status(HttpStatus.UNAUTHORIZED).json({
+      message: 'Unauthorize to perform this action',
+      statusCode: '401',
+    });
+  }
+
   async getAllUser(): Promise<any> {
     const userArr = [];
     const userRef = db.ref('/user');
@@ -1860,16 +2158,16 @@ export class AppService {
     const typeAndColorValue = [];
     const typeAndColorRef = db.ref('/TypeAndColor');
 
-    const isValid = await refAuthentication.once('value', function (snapshot) {
-      for (const val of Object.values(snapshot.val())) {
-        if (
-          Object(val).username === Object(reqData).username &&
-          Object(val).token === Object(reqData).token
-        ) {
-          return true;
-        }
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
       }
-      return false;
     });
     if (isValid) {
       await typeAndColorRef.once('value', function (snapshot) {
@@ -1931,13 +2229,13 @@ export class AppService {
   }
 
   async getNotifications(data: any): Promise<any> {
-    var receiverId = data.userId;
-    var warehouseId = await this.getKhoId(receiverId);
-    var ref = db.ref('/Notification');
-    var result = [];
+    const receiverId = data.userId;
+    const warehouseId = await this.getKhoId(receiverId);
+    const ref = db.ref('/Notification');
+    const result = [];
     await ref.once('value', function (snapshot) {
-      if (snapshot.val())
-        for (let j = 0; j < warehouseId.length; j++)
+      if (snapshot.val()) {
+        for (let j = 0; j < warehouseId.length; j++) {
           for (let i = 0; i < snapshot.val().length; i++) {
             if (
               snapshot.val()[i] &&
@@ -1951,7 +2249,8 @@ export class AppService {
               });
             }
           }
-      else return 'None';
+        }
+      } else return 'None';
     });
 
     return result;

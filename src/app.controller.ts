@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { AppService } from './app.service';
 
 @Controller()
@@ -67,9 +76,9 @@ export class AppController {
     return this.appService.logOutUser(data.body);
   }
 
-  @Post('/getwarehouse')
-  getWarehouse(@Req() data): any {
-    return this.appService.getWarehouse(data.body);
+  @Get('/getwarehouse')
+  getWarehouse(@Query() data, @Res() res): any {
+    return this.appService.getWarehouse(data, res);
   }
 
   @Post('/getprovider')
@@ -101,8 +110,12 @@ export class AppController {
   }
   @Post('/postOrder')
   addNewOrder(@Req() data): any {
-    console.log(data.body);
     return this.appService.postOrder(data.body);
+  }
+
+  @Post('/checkCapacityOrder')
+  checkCapacityOrder(@Req() data, @Res() res): any {
+    return this.appService.checkCapacityOrder(data.body, res);
   }
 
   @Post('/getOrder')
@@ -150,8 +163,8 @@ export class AppController {
     return this.appService.getAllUser();
   }
   @Post('/postNewUser')
-  postNewUser(@Req() data): any {
-    return this.appService.postNewUser(data.body);
+  postNewUser(@Req() data, @Res() Response): any {
+    return this.appService.postNewUser(data.body, Response);
   }
   @Post('/changeUserInfor')
   changeUserInfor(@Req() data): any {
@@ -170,5 +183,25 @@ export class AppController {
   @Post('/getSoldProduct')
   getSoldProduct(@Req() data): any {
     return this.appService.getSoldProduct(data.body);
+  }
+
+  @Post('/getTotalProductNumberAndLength')
+  getTotalProductNumberAndLength(@Req() data): any {
+    return this.appService.getTotalProductNumberAndLength(data.body);
+  }
+
+  @Post('/postNewCustomer')
+  postNewCustomer(@Req() data, @Res() res): any {
+    return this.appService.postNewCustomer(data.body, res);
+  }
+
+  @Post('/postNewProvider')
+  postNewProvider(@Req() data, @Res() res): any {
+    return this.appService.postNewProvider(data.body, res);
+  }
+
+  @Post('/postNewWarehouse')
+  postNewWarehouse(@Req() data, @Res() res): any {
+    return this.appService.postNewWarehouse(data.body, res);
   }
 }
