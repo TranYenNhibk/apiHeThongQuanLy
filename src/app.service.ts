@@ -287,7 +287,7 @@ export class AppService {
       listType,
       listFabric,
       1,
-      data.time, 
+      data.time,
       data.importEmployee,
       warehouseId[0],
     );
