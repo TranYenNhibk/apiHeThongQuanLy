@@ -28,7 +28,7 @@
     "@nestjs/platform-express": "^8.0.0",
     "@nestjs/swagger": "^5.2.0",
     "firebase": "^9.6.1",
-    "firebase-admin": "^10.0.0",
+    "firebase-admin": "^10.0.2",
     "jsonwebtoken": "^8.5.1",
     "nestjs": "0.0.1",
     "reflect-metadata": "^0.1.13",

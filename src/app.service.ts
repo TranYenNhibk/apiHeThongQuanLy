@@ -224,14 +224,14 @@ export class AppService {
       importId = snapshot.val().length;
     });
     var warehouseId = await this.getKhoId(data.importEmployee);
-    // await ref.child(String(importId)).set({
-    //   orderId: data.orderId,
-    //   driver: data.driver,
-    //   importEmployee: data.importEmployee,
-    //   time: data.time,
-    //   note: data.note,
-    //   warehouseId: warehouseId[0],
-    // });
+    await ref.child(String(importId)).set({
+      orderId: data.orderId,
+      driver: data.driver,
+      importEmployee: data.importEmployee,
+      time: data.time,
+      note: data.note,
+      warehouseId: warehouseId[0],
+    });
     var listType = [];
     var listFabric = [];
 
@@ -249,13 +249,13 @@ export class AppService {
           null,
           {
             length: data.list[i].length,
-            lotNumber: data.list[i].number,
+            lotNumber: data.list[i].lotNumber,
           },
         ]);
       } else {
         listFabric[id].push({
           length: data.list[i].length,
-          lotNumber: data.list[i].number,
+          lotNumber: data.list[i].lotNumber,
         });
       }
     }
@@ -265,7 +265,8 @@ export class AppService {
     for (let i = 0; i < listType.length; i++) {
       listGoods[listType[i]] = listFabric[i];
     }
-    // await ref.child(String(importId)).child('listGoods').set(listGoods);
+    // console.log(listGoods);
+    await ref.child(String(importId)).child('listGoods').set(listGoods);
     var count = 0;
     for (let i = 0; i < listType.length; i++) {
       count = 0;
@@ -275,22 +276,22 @@ export class AppService {
         else count = 0;
       });
       for (let j = 1; j < listFabric[i].length; j++) {
-        // await ref.child(String(count + j)).set({
-        //   length: listFabric[i][j].length,
-        //   lotNumber: listFabric[i][j].lotNumber,
-        //   status: 'chưa bán',
-        // });
+        await ref.child(String(count + j)).set({
+          length: listFabric[i][j].length,
+          lotNumber: listFabric[i][j].lotNumber,
+          status: 'chưa bán',
+        });
       }
     }
     this.postNoti(
       listType,
       listFabric,
       1,
-      data.time,
+      data.time, 
       data.importEmployee,
       warehouseId[0],
     );
-    return 'Tạo phiếu nhập hàng thành công';
+    return 'Thành công';
   }
 
   async postExport(data: any) {
