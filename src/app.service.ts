@@ -489,6 +489,7 @@ export class AppService {
       }
     });
     if (isValid) {
+      console.log('get here?');
       await userRef.once('value', function (snapshot) {
         for (const user of Object.values(snapshot.val())) {
           if (Object(user).username === Object(userInfo).username) {
@@ -519,8 +520,10 @@ export class AppService {
         statusCode: '200',
       });
     } else {
-      console.log('123');
-      return 'Không hợp lệ';
+      return res.status(HttpStatus.UNAUTHORIZED).json({
+        message: 'Unauthorized',
+        statusCode: '401',
+      });
     }
   }
 
@@ -2256,6 +2259,118 @@ export class AppService {
     return result;
   }
 
+  async getStatistic(data: any, res: any) {
+    const refAuthentication = db.ref('/Authentication');
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(data).username &&
+        val.token === Object(data).token
+      ) {
+        isValid = true;
+      }
+    });
+
+    // let result = '17:31, 05-12-2021';
+    // const number = '05';
+    // const newDate = new Date(2021, 12 - 1, 5, 17, 31);
+    // const newDate2 = new Date(2021, 11 - 1, 5, 17, 31);
+    // console.log('result', result, newDate.toString());
+    // const difference = newDate.getTime() - newDate2.getTime();
+    // console.log('dif', Math.ceil(difference / (1000 * 3600 * 24)));
+    // console.log('to number', Number(number));
+    if (isValid) {
+      const typeAndColorKey = [];
+      const typeAndColorValue = [];
+      const typeAndColorRef = db.ref('/TypeAndColor');
+      await typeAndColorRef.once('value', function (snapshot) {
+        let count = 0;
+        for (const key in snapshot.val()) {
+          typeAndColorKey.push(key);
+        }
+        for (const value of snapshot.val()) {
+          if (value !== undefined && value != null) {
+            typeAndColorValue.push({
+              id: typeAndColorKey[count],
+              type: value.type,
+              color: value.color,
+            });
+            count = count + 1;
+          }
+        }
+      });
+      const findTypeAndColor = (id: any) => {
+        for (const value of typeAndColorValue) {
+          if (id == value.id) {
+            return { type: value.type, color: value.color };
+          }
+        }
+      };
+      const refWarehouse = db.ref('/warehouse/' + data.warehouseId + '/goods');
+      const result = [];
+      const snapshotWarehouse = await refWarehouse.once('value');
+      snapshotWarehouse.forEach((child) => {
+        const key = child.key;
+        const value = child.val();
+        const goods = [];
+        if (key == '1' || key == '2') {
+          for (const item of value) {
+            if (item && item.status == 'chưa bán') {
+              let isHave = true;
+              if (goods.length == 0) {
+                goods.push({
+                  importTime: item.importTime,
+                  lotNumber: String(item.lotNumber),
+                  number: 1,
+                  totalLength: Number(item.length),
+                });
+              } else {
+                isHave = goods.some((element) => {
+                  if (
+                    String(element.importTime) == String(item.importTime) &&
+                    String(element.lotNumber) == String(item.lotNumber)
+                  ) {
+                    element.number = ++element.number;
+                    element.totalLength =
+                      Number(element.totalLength) + Number(item.length);
+                  }
+                  return (
+                    String(element.importTime) == String(item.importTime) &&
+                    String(element.lotNumber) == String(item.lotNumber)
+                  );
+                });
+              }
+              console.log('test', isHave, item.lotNumber);
+              if (isHave == false) {
+                goods.push({
+                  importTime: item.importTime,
+                  lotNumber: String(item.lotNumber),
+                  number: 1,
+                  totalLength: Number(item.length),
+                });
+              }
+            }
+          }
+          result.push({
+            typeAndColor: findTypeAndColor(key),
+            listGoods: goods,
+          });
+        }
+      });
+
+      return res.status(HttpStatus.OK).json({
+        message: result,
+        statusCode: '200',
+      });
+    } else {
+      return res.status(HttpStatus.UNAUTHORIZED).json({
+        message: 'Unauthorized',
+        statusCode: '401',
+      });
+    }
+  }
   async changeStatus(data: any) {
     var ref = db.ref('/Notification/' + data.notification);
     await ref.update({

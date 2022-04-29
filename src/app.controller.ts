@@ -36,21 +36,19 @@ export class AppController {
   @Post('/getExportPlans')
   async getExportPlans(@Req() data): Promise<any> {
     var isValid = await this.appService.checkAuthentication(data.body);
-    if(isValid){
+    if (isValid) {
       var list = await this.appService.getKhoId(data.body.userId);
       return this.appService.getExportPlans(list);
-    }
-    else return "Không hợp lệ";
+    } else return 'Không hợp lệ';
   }
 
   @Post('/getOrders')
   async getOrders(@Req() data): Promise<any> {
     var isValid = await this.appService.checkAuthentication(data.body);
-    if(isValid){
+    if (isValid) {
       var list = await this.appService.getKhoId(data.body.userId);
       return this.appService.getOrders(list);
-    }
-    else return "Không hợp lệ";
+    } else return 'Không hợp lệ';
   }
 
   @Post('/getExportPlan')
@@ -209,5 +207,10 @@ export class AppController {
   @Post('/postNewWarehouse')
   postNewWarehouse(@Req() data, @Res() res): any {
     return this.appService.postNewWarehouse(data.body, res);
+  }
+
+  @Post('/getStatistic')
+  getStatistic(@Req() data, @Res() res): any {
+    return this.appService.getStatistic(data.body, res);
   }
 }
