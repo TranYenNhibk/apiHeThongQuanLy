@@ -377,7 +377,7 @@ export class AppService {
         data.exportEmployee,
         warehouseId[0],
       );
-      return 'Tạo phiếu xuất hàng thành công';
+      return 'Thành công';
     } else
       return 'Tạo phiếu xuất thất bại! Bạn đã nhập mã cây vải không còn lưu trữ trong kho (đã bán)! Vui lòng nhập lại!';
   }
@@ -2499,5 +2499,47 @@ export class AppService {
       return false;
     });
     return isValid;
+  }
+
+  async getFabricInWarehouse(reqData: any): Promise<any> {
+    let warehouseId = await this.getKhoId(reqData.userId);
+    let ref = db.ref('/warehouse');
+    var result = [];
+    ref = db.ref('/warehouse/' + String(warehouseId) + '/goods');
+    let goodsList = await ref.once('value');
+    goodsList.forEach((child) => {
+      result.push({ typeAndColorId: child.key });
+    });
+    console.log(reqData);
+    for (let j = 0; j < result.length; j++) {
+      ref = db.ref(
+        '/warehouse/' +
+          String(warehouseId) +
+          '/goods/' +
+          result[j].typeAndColorId,
+      );
+      result[j]['listFabric'] = [];
+      let fabricList = await ref.once('value');
+      fabricList.forEach((child) => {
+        result[j]['listFabric'].push({
+          fabricId: child.key,
+        });
+      });
+      await ref.once('value', function (snapshot) {
+        if (Array.isArray(snapshot.val()))
+          for (let k = 0; k < snapshot.val().length; k++) {
+            if (snapshot.val()[k] && k - 1 >= 0) {
+              result[j]['listFabric'][k - 1]['length'] =
+                snapshot.val()[k].length;
+              result[j]['listFabric'][k - 1]['lotNumber'] =
+                snapshot.val()[k].lotNumber;
+              result[j]['listFabric'][k - 1]['status'] =
+                snapshot.val()[k].status;
+            }
+          }
+      });
+    }
+    console.log(result);
+    return result;
   }
 }
