@@ -213,7 +213,6 @@ export class AppController {
   getStatistic(@Req() data, @Res() res): any {
     return this.appService.getStatistic(data.body, res);
   }
-  
   @Post('/getFabricInWarehouses')
   getFabricInWarehouse(@Req() data): any {
     return this.appService.getFabricInWarehouse(data.body);
