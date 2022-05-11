@@ -113,8 +113,8 @@ export class AppController {
     return this.appService.getAllTypeAndColor();
   }
   @Post('/postOrder')
-  addNewOrder(@Req() data): any {
-    return this.appService.postOrder(data.body);
+  addNewOrder(@Req() data, @Res() res): any {
+    return this.appService.postOrder(data.body, res);
   }
 
   @Post('/checkCapacityOrder')
@@ -123,28 +123,28 @@ export class AppController {
   }
 
   @Post('/getOrder')
-  getOrder(@Req() data): any {
-    return this.appService.getOrder(data.body);
+  getOrder(@Req() data, @Res() res): any {
+    return this.appService.getOrder(data.body, res);
   }
 
   @Post('/getImport')
-  getImport(@Req() data): any {
-    return this.appService.getImport(data.body);
+  getImport(@Req() data, @Res() res): any {
+    return this.appService.getImport(data.body, res);
   }
 
   @Post('/getExport')
-  getExport(@Req() data): any {
-    return this.appService.getExport(data.body);
+  getExport(@Req() data, @Res() res): any {
+    return this.appService.getExport(data.body, res);
   }
 
   @Post('/getManagerExportPlans')
-  getManagerExportPlans(@Req() data): any {
-    return this.appService.getManagerExportPlans(data.body);
+  getManagerExportPlans(@Req() data, @Res() res): any {
+    return this.appService.getManagerExportPlans(data.body, res);
   }
   @Post('/postExportPlan')
-  addNewExportPlan(@Req() data): any {
+  addNewExportPlan(@Req() data, @Res() res): any {
     console.log(data.body);
-    return this.appService.postExportPlan(data.body);
+    return this.appService.postExportPlan(data.body, res);
   }
 
   @Post('/getProductList')
@@ -175,8 +175,8 @@ export class AppController {
     return this.appService.changeUserInfor(data.body);
   }
   @Post('/getNotifications')
-  getNotifications(@Req() data): any {
-    return this.appService.getNotifications(data.body);
+  getNotifications(@Req() data, @Res() res): any {
+    return this.appService.getNotifications(data.body, res);
   }
 
   @Post('/changeStatus')

@@ -1102,7 +1102,7 @@ export class AppService {
     return productList;
   }
 
-  async postOrder(orderInfo: any): Promise<any> {
+  async postOrder(orderInfo: any, res:any): Promise<any> {
     const db = admin.database();
     const ref = db.ref('/order');
     const refProvider = db.ref('/Provider');
@@ -1239,9 +1239,23 @@ export class AppService {
         warehouseId: Number(Object(orderInfo).khoId),
         listGoods: listOfGood,
       });
-      return 'Thành công';
+      return res.status(HttpStatus.OK).json({
+        message: 'Thành công',
+        statusCode: '200',
+        data:{
+          providerId: Number(provId),
+          manageId: Number(userId),
+          reason: Object(orderInfo).reason,
+          time: Object(orderInfo).time,
+          warehouseId: Number(Object(orderInfo).khoId),
+          listGoods: listOfGood,
+        }
+      });
     }
-    return 'Không hợp lệ';
+    return res.status(HttpStatus.UNAUTHORIZED).json({
+      message: 'Không hợp lệ',
+      statusCode: '401',
+    });
   }
   async checkCapacityOrder(reqData: any, res: any): Promise<any> {
     const refAuthentication = db.ref('/Authentication');
@@ -1296,7 +1310,7 @@ export class AppService {
       });
     }
   }
-  async getOrder(reqData: any): Promise<any> {
+  async getOrder(reqData: any, res:any): Promise<any> {
     const db = admin.database();
     const userRef = db.ref('/user');
     const orderRef = db.ref('/order');
@@ -1336,7 +1350,6 @@ export class AppService {
           }
         }
       });
-      console.log('testing', khoWorking);
       const khoList = khoWorking.map((item) => {
         if (item) {
           return item.khoId;
@@ -1446,11 +1459,18 @@ export class AppService {
       };
       await handleData();
 
-      return orderList;
+      return res.status(HttpStatus.OK).json({
+        message: 'Thành công',
+        statusCode: '200',
+        data:orderList,
+      });
     }
-    return 'Không hợp lệ';
+    return res.status(HttpStatus.UNAUTHORIZED).json({
+      message: 'Không có quyền thực hiện',
+      statusCode: '401',
+    });
   }
-  async getImport(reqData: any): Promise<any> {
+  async getImport(reqData: any, res:any): Promise<any> {
     const db = admin.database();
     const userRef = db.ref('/user');
     const importRef = db.ref('/import');
@@ -1593,13 +1613,19 @@ export class AppService {
         }
         countTemp++;
       }
-
-      return importList;
+      return res.status(HttpStatus.OK).json({
+        message: 'Thành công',
+        statusCode: '200',
+        data:importList,
+      });
     }
-    return 'Không hợp lệ';
+    return res.status(HttpStatus.OK).json({
+      message: 'Không hợp lệ',
+      statusCode: '401',
+    });
   }
 
-  async getExport(reqData: any): Promise<any> {
+  async getExport(reqData: any, res:any): Promise<any> {
     const username = 'kdat0310';
     const db = admin.database();
     const userRef = db.ref('/user');
@@ -1784,12 +1810,19 @@ export class AppService {
         countTemp++;
       }
 
-      return exportList;
+      return res.status(HttpStatus.OK).json({
+        message: 'Thành công',
+        statusCode: '200',
+        data:exportList,
+      });
     }
-    return 'Không hợp lệ';
+    return res.status(HttpStatus.OK).json({
+      message: 'Không hợp lệ',
+      statusCode: '401',
+    });
   }
   // lấy danh sách kế hoạch xuất theo của quản lý
-  async getManagerExportPlans(reqData: any): Promise<any> {
+  async getManagerExportPlans(reqData: any, res:any): Promise<any> {
     const username = 'kdat0310';
     const db = admin.database();
     const userRef = db.ref('/user');
@@ -1928,12 +1961,19 @@ export class AppService {
           }
         }
       });
-      return exportPlanList;
+      return res.status(HttpStatus.OK).json({
+        message: 'Thành công',
+        statusCode: '200',
+        data:exportPlanList,
+      });
     }
-    return 'Không hợp lệ';
+    return res.status(HttpStatus.UNAUTHORIZED).json({
+      message: 'Không có quyền lấy thông tin!',
+      statusCode: '401',
+    });
   }
   // Tạo phiếu kế hoạch xuất hàng (quản lý)
-  async postExportPlan(exportPlanInfo: any): Promise<any> {
+  async postExportPlan(exportPlanInfo: any, res:any): Promise<any> {
     const db = admin.database();
     const ref = db.ref('/exportPlan');
     const refCustomer = db.ref('/customer');
@@ -1954,11 +1994,6 @@ export class AppService {
     } else {
       reason = 'Chuyển kho';
     }
-    // await ref.once('value', function (snapshot) {
-    //   for (const key in snapshot.val()) {
-    //     console.log(key);
-    //   }
-    // });
     await refTypeAndColor.once('value', function (snapshot) {
       temp = 1;
       let count = 0;
@@ -2037,7 +2072,18 @@ export class AppService {
       warehouseId: Number(Object(exportPlanInfo).khoId),
       listGoods: listOfGood,
     });
-    return 'Thành công';
+    return res.status(HttpStatus.OK).json({
+      message: 'Thành công',
+      statusCode: '200',
+      data:{
+        customerId: Number(customerId),
+        manageId: Number(userId),
+        reason: Object(exportPlanInfo).reason,
+        time: Object(exportPlanInfo).time,
+        warehouseId: Number(Object(exportPlanInfo).khoId),
+        listGoods: listOfGood,
+      },
+    });
   }
   async postNewUser(newUserInformation: any, res: any): Promise<any> {
     const db = admin.database();
@@ -2079,6 +2125,15 @@ export class AppService {
       return res.status(HttpStatus.CREATED).json({
         message: 'Thành công tạo người dùng!',
         statusCode: '201',
+        data:{
+          birthday: newUserInformation.dob,
+          name: newUserInformation.name,
+          password: '123456',
+          phone: newUserInformation.phone,
+          sex: newUserInformation.sex,
+          username: newUserInformation.username,
+          workAt: workAtList,
+        }
       });
     }
 
@@ -2124,6 +2179,11 @@ export class AppService {
       return res.status(HttpStatus.CREATED).json({
         message: 'Thành công tạo người dùng!',
         statusCode: '201',
+        data:{
+          name: newCustomerInformation.name,
+          address: newCustomerInformation.address,
+          phone: newCustomerInformation.phoneNumber,
+        }
       });
     }
 
@@ -2168,6 +2228,11 @@ export class AppService {
       return res.status(HttpStatus.CREATED).json({
         message: 'Thành công tạo người dùng!',
         statusCode: '201',
+        data:{
+          name: newProviderInformation.name,
+          address: newProviderInformation.address,
+          phone: newProviderInformation.phoneNumber,
+        }
       });
     }
 
@@ -2221,6 +2286,16 @@ export class AppService {
       return res.status(HttpStatus.CREATED).json({
         message: 'Thành công tạo kho!',
         statusCode: '201',
+        data:{
+          name: newWarehouseInformation.name,
+          address: newWarehouseInformation.address,
+          square: newWarehouseInformation.square,
+          capacityWarehouse: newWarehouseInformation.capacityWarehouse,
+          capacityEachType: '50',
+          time: '8:00 - 21:00',
+          goods: new Array(1).fill(0),
+          status: 'Bình thường',
+        }
       });
     }
 
@@ -2354,7 +2429,7 @@ export class AppService {
     return 'Không hợp lệ';
   }
 
-  async getNotifications(data: any): Promise<any> {
+  async getNotifications(data: any, res:any): Promise<any> {
     const receiverId = data.userId;
     const warehouseId = await this.getKhoId(receiverId);
     const ref = db.ref('/Notification');
@@ -2379,7 +2454,11 @@ export class AppService {
       } else return 'None';
     });
 
-    return result;
+    return res.status(HttpStatus.OK).json({
+      message: 'Thành công',
+      statusCode: '200',
+      data:result,
+    });
   }
 
   async getStatistic(data: any, res: any) {
@@ -2515,7 +2594,6 @@ export class AppService {
               }
             }
           }
-          console.log('num', numberOfProduct);
           result.push({
             typeAndColor: findTypeAndColor(key),
             maxDateStock: maxDateStock,
