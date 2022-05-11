@@ -514,8 +514,8 @@ export class AppService {
       if (snapshot.val()) {
         for (let i = 1; i < snapshot.val().length; i++) {
           if (
-            snapshot.val()[i].username === valArr[0] &&
-            snapshot.val()[i].password === valArr[1]
+            snapshot.val()[i].username == valArr[0] &&
+            snapshot.val()[i].password == valArr[1]
           ) {
             found = 1;
             role = snapshot.val()[i].role;
@@ -554,15 +554,17 @@ export class AppService {
       token: token,
       role: role,
     });
-    if (found) 
-  return res.status(HttpStatus.OK).json({
-    message: 'Hợp lệ',
-    statusCode: '200',
-    data:reqdata,
-  });
+    if (found) { 
+      console.log("req", reqdata); return res.status(HttpStatus.OK).json({
+      message: 'Hợp lệ',
+      statusCode: '200',
+      data:reqdata,
+    });}
+
     else return res.status(HttpStatus.BAD_REQUEST).json({
       message: 'No found',
       statusCode: '400',
+      data:reqdata,
     });;
   }
 
