@@ -69,9 +69,9 @@ export class AppController {
     return this.appService.postExport(data.body);
   }
   @Post('/checkuser')
-  postHello(@Req() data): any {
+  postHello(@Req() data, @Res() res): any {
     // console.log('post data:', data.body);
-    return this.appService.checkLoginUser(data.body);
+    return this.appService.checkLoginUser(data.body, res);
   }
 
   @Post('/logout')

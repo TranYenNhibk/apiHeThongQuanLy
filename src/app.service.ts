@@ -498,7 +498,7 @@ export class AppService {
 
   
 
-  async checkLoginUser(logreq: object): Promise<any> {
+  async checkLoginUser(logreq: object, res:any): Promise<any> {
     const db = admin.database();
     const ref = db.ref('/user');
     const valArr = [];
@@ -554,8 +554,16 @@ export class AppService {
       token: token,
       role: role,
     });
-    if (found) return reqdata;
-    else return 'No found';
+    if (found) 
+  return res.status(HttpStatus.OK).json({
+    message: 'Hợp lệ',
+    statusCode: '200',
+    data:reqdata,
+  });
+    else return res.status(HttpStatus.BAD_REQUEST).json({
+      message: 'No found',
+      statusCode: '400',
+    });;
   }
 
   async logOutUser(logreq: object): Promise<any> {
@@ -1619,7 +1627,7 @@ export class AppService {
         data:importList,
       });
     }
-    return res.status(HttpStatus.OK).json({
+    return res.status(HttpStatus.UNAUTHORIZED).json({
       message: 'Không hợp lệ',
       statusCode: '401',
     });
@@ -1816,7 +1824,7 @@ export class AppService {
         data:exportList,
       });
     }
-    return res.status(HttpStatus.OK).json({
+    return res.status(HttpStatus.UNAUTHORIZED).json({
       message: 'Không hợp lệ',
       statusCode: '401',
     });
