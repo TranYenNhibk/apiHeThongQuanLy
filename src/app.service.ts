@@ -2864,6 +2864,7 @@ export class AppService {
     }
     return res.status(HttpStatus.UNAUTHORIZED).json({
       message: "Unauthorized",
+      data:reqData,
       statusCode: '401',
     });
   }
