@@ -632,6 +632,8 @@ export class AppService {
               address: snapshot.val().address,
               square: snapshot.val().square,
               status: snapshot.val().status,
+              capacityEachType: snapshot.val().capacityEachType,
+              capacityWarehouse: snapshot.val().capacityWarehouse,
             });
           }
         });
