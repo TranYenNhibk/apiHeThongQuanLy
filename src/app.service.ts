@@ -2832,4 +2832,39 @@ export class AppService {
     console.log(result);
     return result;
   }
+
+  async changeCapacity(reqData:any, res:any){
+    const refAuthentication = db.ref('/Authentication');
+    const refWarehouse = db.ref('/warehouse');
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token && 
+        Object(reqData).role == "manager"
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      const warehouseRef = refWarehouse.child(Object(reqData).warehouseId);
+      warehouseRef.update({
+        capacityEachType:Object(reqData).eachType,
+        capacityWarehouse:Object(reqData).warehouse,
+      })
+      return res.status(HttpStatus.OK).json({
+        message: {
+          capacityEachType:Object(reqData).eachType,
+          capacityWarehouse:Object(reqData).warehouse,
+        },
+        statusCode: '200',
+      });
+    }
+    return res.status(HttpStatus.UNAUTHORIZED).json({
+      message: "Unauthorized",
+      statusCode: '401',
+    });
+  }
 }

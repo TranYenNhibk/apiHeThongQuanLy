@@ -217,4 +217,10 @@ export class AppController {
   getFabricInWarehouse(@Req() data): any {
     return this.appService.getFabricInWarehouse(data.body);
   }
+
+
+  @Post('/changeCapacity')
+  changeCapacity(@Req() data, @Res() res): any {
+    return this.appService.changeCapacity(data.body, res);
+  }
 }
