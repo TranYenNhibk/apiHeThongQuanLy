@@ -902,7 +902,7 @@ export class AppService {
             status: Object(value).status,
             key: keyList[temp],
             name: Object(value).name,
-            
+
           });
           temp++;
         }
@@ -2130,6 +2130,7 @@ export class AppService {
         name: newUserInformation.name,
         password: '123456',
         phone: newUserInformation.phone,
+        role:newUserInformation.role,
         sex: newUserInformation.sex,
         username: newUserInformation.username,
         workAt: workAtList,
