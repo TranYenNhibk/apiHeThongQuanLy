@@ -901,7 +901,8 @@ export class AppService {
             address: Object(value).address,
             status: Object(value).status,
             key: keyList[temp],
-            name: 'Kho ' + keyList[temp],
+            name: Object(value).name,
+            
           });
           temp++;
         }
