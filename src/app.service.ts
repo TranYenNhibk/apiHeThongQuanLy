@@ -2523,7 +2523,6 @@ export class AppService {
         const key = child.key;
         const value = child.val();
         const goods = [];
-        if (key == '1' || key == '2') {
           let maxDateStock = 0;
           let averageDateStock = 0;
           let numberOfProduct = 0;
@@ -2614,7 +2613,7 @@ export class AppService {
             averageDateStock: averageDateStock / numberOfProduct,
             listGoods: goods,
           });
-        }
+
       });
 
       return res.status(HttpStatus.OK).json({
