@@ -127,6 +127,36 @@ export class AppController {
     return this.appService.getOrder(data.body, res);
   }
 
+  @Post('/getUnapprovalOrder')
+  getUnpprovalOrder(@Req() data, @Res() res): any {
+    return this.appService.getUnapprovalOrder(data.body, res);
+  }
+
+  @Post('/getUnapprovalExportPlan')
+  getUnpprovalExportPlan(@Req() data, @Res() res): any {
+    return this.appService.getUnapprovalExportPlan(data.body, res);
+  }
+
+  @Post('/approveOrder')
+  approveOrder(@Req() data, @Res() res): any {
+    return this.appService.approveOrder(data.body, res);
+  }
+
+  @Post('/disapproveOrder')
+  disapproveOrder(@Req() data, @Res() res): any {
+    return this.appService.disapproveOrder(data.body, res);
+  }
+
+  @Post('/approveExportPlan')
+  approveExportPlan(@Req() data, @Res() res): any {
+    return this.appService.approveExportPlan(data.body, res);
+  }
+
+  @Post('/disapproveExportPlan')
+  disapproveExportPlan(@Req() data, @Res() res): any {
+    return this.appService.disapproveExportPlan(data.body, res);
+  }
+
   @Post('/getImport')
   getImport(@Req() data, @Res() res): any {
     return this.appService.getImport(data.body, res);
@@ -217,7 +247,6 @@ export class AppController {
   getFabricInWarehouse(@Req() data): any {
     return this.appService.getFabricInWarehouse(data.body);
   }
-
 
   @Post('/changeCapacity')
   changeCapacity(@Req() data, @Res() res): any {

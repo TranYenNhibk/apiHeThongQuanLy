@@ -496,9 +496,7 @@ export class AppService {
       return 'Tạo phiếu xuất thất bại! Bạn đã nhập mã cây vải không còn lưu trữ trong kho (đã bán)! Vui lòng nhập lại!';
   }
 
-  
-
-  async checkLoginUser(logreq: object, res:any): Promise<any> {
+  async checkLoginUser(logreq: object, res: any): Promise<any> {
     const db = admin.database();
     const ref = db.ref('/user');
     const valArr = [];
@@ -554,18 +552,19 @@ export class AppService {
       token: token,
       role: role,
     });
-    if (found) { 
-      console.log("req", reqdata); return res.status(HttpStatus.OK).json({
-      message: 'Hợp lệ',
-      statusCode: '200',
-      data:reqdata,
-    });}
-
-    else return res.status(HttpStatus.BAD_REQUEST).json({
-      message: 'No found',
-      statusCode: '400',
-      data:reqdata,
-    });;
+    if (found) {
+      console.log('req', reqdata);
+      return res.status(HttpStatus.OK).json({
+        message: 'Hợp lệ',
+        statusCode: '200',
+        data: reqdata,
+      });
+    } else
+      return res.status(HttpStatus.BAD_REQUEST).json({
+        message: 'No found',
+        statusCode: '400',
+        data: reqdata,
+      });
   }
 
   async logOutUser(logreq: object): Promise<any> {
@@ -902,7 +901,6 @@ export class AppService {
             status: Object(value).status,
             key: keyList[temp],
             name: Object(value).name,
-
           });
           temp++;
         }
@@ -1115,14 +1113,17 @@ export class AppService {
     return productList;
   }
 
-  async postOrder(orderInfo: any, res:any): Promise<any> {
+  async postOrder(orderInfo: any, res: any): Promise<any> {
+    console.log('order', orderInfo);
     const db = admin.database();
     const ref = db.ref('/order');
+    const refExportPlan = db.ref('/exportPlan');
     const refProvider = db.ref('/Provider');
     const refUser = db.ref('/user');
     const refWarehouse = db.ref('/warehouse');
     let refTypeAndColor = db.ref('/TypeAndColor');
     const refAuthentication = db.ref('/Authentication');
+    const userWarehouseList = [];
     const userListKey = [];
     const providerListKey = [];
     const typeListKey = [];
@@ -1210,6 +1211,11 @@ export class AppService {
             Object(value).username === Object(orderInfo).username
           ) {
             userId = userListKey[temp];
+            for (const item of Object(value).workAt) {
+              if (item) {
+                userWarehouseList.push(item.khoId);
+              }
+            }
           }
           temp++;
         }
@@ -1229,46 +1235,301 @@ export class AppService {
             }
           });
         } else if (Object(orderInfo).reason === 'Chuyển kho') {
-          await refWarehouse.once('value', function (snapshot) {
-            for (const key in snapshot.val()) {
-              providerListKey.push(key);
-              if (Object(orderInfo).providerName.slice(-1) === key) {
-                provId = Number(key);
-                break;
-              }
+          const refWarehouseList = await refWarehouse.once('value');
+          refWarehouseList.forEach((child) => {
+            const val = child.val();
+            const key = child.key;
+            if (Object(val).name === Object(orderInfo).providerName) {
+              provId = Number(key);
             }
           });
         }
       };
-      getProviderId();
-      await ref.once('value', function (snapshot) {
-        childNumber = snapshot.numChildren();
-      });
-      await ref.child(String(childNumber + 1)).set({
-        providerId: Number(provId),
-        manageId: Number(userId),
-        reason: Object(orderInfo).reason,
-        time: Object(orderInfo).time,
-        warehouseId: Number(Object(orderInfo).khoId),
-        listGoods: listOfGood,
-      });
+      await getProviderId();
+      if (
+        Object(orderInfo).reason == 'Chuyển kho' &&
+        userWarehouseList.indexOf(Number(provId)) == -1
+      ) {
+        await ref.once('value', function (snapshot) {
+          childNumber = snapshot.numChildren();
+        });
+        await ref.child(String(childNumber + 1)).set({
+          providerId: Number(provId),
+          manageId: Number(userId),
+          reason: Object(orderInfo).reason,
+          time: Object(orderInfo).time,
+          status: 'chưa duyệt',
+          warehouseId: Number(Object(orderInfo).khoId),
+          listGoods: listOfGood,
+        });
+      } else {
+        await ref.once('value', function (snapshot) {
+          childNumber = snapshot.numChildren();
+        });
+        await ref.child(String(childNumber + 1)).set({
+          providerId: Number(provId),
+          manageId: Number(userId),
+          reason: Object(orderInfo).reason,
+          time: Object(orderInfo).time,
+          status: 'chưa xong',
+          warehouseId: Number(Object(orderInfo).khoId),
+          listGoods: listOfGood,
+        });
+      }
+
+      if (
+        Object(orderInfo).reason == 'Chuyển kho' &&
+        userWarehouseList.indexOf(Number(provId)) != -1
+      ) {
+        await refExportPlan.once('value', function (snapshot) {
+          childNumber = snapshot.numChildren();
+        });
+        await refExportPlan.child(String(childNumber + 1)).set({
+          customerId: Number(Object(orderInfo).khoId),
+          manageId: Number(userId),
+          reason: Object(orderInfo).reason,
+          time: Object(orderInfo).time,
+          warehouseId: Number(provId),
+          status: 'chưa xong',
+          listGoods: listOfGood,
+        });
+      }
       return res.status(HttpStatus.OK).json({
         message: 'Thành công',
         statusCode: '200',
-        data:{
+        data: {
           providerId: Number(provId),
           manageId: Number(userId),
           reason: Object(orderInfo).reason,
           time: Object(orderInfo).time,
           warehouseId: Number(Object(orderInfo).khoId),
           listGoods: listOfGood,
-        }
+        },
       });
     }
     return res.status(HttpStatus.UNAUTHORIZED).json({
       message: 'Không hợp lệ',
       statusCode: '401',
     });
+  }
+  async approveOrder(reqData: any, res: any): Promise<any> {
+    const refAuthentication = db.ref('/Authentication');
+    const refExportPlan = db.ref('exportPlan');
+    const userRef = db.ref('/user');
+    const userKey = [];
+    const userList = [];
+    await userRef.once('value', function (snapshot) {
+      let count = 0;
+      for (const key in snapshot.val()) {
+        userKey.push(key);
+      }
+      for (const value of Object(snapshot.val())) {
+        if (value != undefined && value != null) {
+          userList.push({
+            id: userKey[count],
+            username: Object(value).username,
+          });
+          count++;
+        }
+      }
+    });
+    const findUserId = (userId: any) => {
+      for (const value of userList) {
+        console.log(value);
+        if (userId == Object(value).username) {
+          return Object(value).id;
+        }
+      }
+    };
+    let isValid = false;
+
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      const refOrder = db.ref('/order');
+      const orderRef = refOrder.child(Object(reqData).id);
+      orderRef.update({
+        status: 'chưa xong',
+      });
+      let childNumber: number;
+      await refExportPlan.once('value', function (snapshot) {
+        childNumber = snapshot.numChildren();
+      });
+      const tempGoods = Object(reqData).data.listGoods.map((item: any) => {
+        return {
+          typeId: item.typeId,
+          number: item.number,
+        };
+      });
+      await refExportPlan.child(String(childNumber + 1)).set({
+        customerId: Object(reqData).data.providerId,
+        manageId: Number(findUserId(Object(reqData).username)),
+        reason: Object(reqData).data.reason,
+        time: Object(reqData).time,
+        status: 'chưa xong',
+        warehouseId: Object(reqData).data.warehouseId,
+        listGoods: tempGoods,
+      });
+      return res.status(HttpStatus.OK).json({
+        message: 'Successfully approve',
+        statusCode: '200',
+      });
+    } else {
+      return res.status(HttpStatus.UNAUTHORIZED).json({
+        message: 'Unauthorize to perform this action',
+        statusCode: '401',
+      });
+    }
+  }
+
+  async disapproveOrder(reqData: any, res: any): Promise<any> {
+    const refAuthentication = db.ref('/Authentication');
+    let isValid = false;
+    console.log(reqData);
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      const refOrder = db.ref('/order');
+      const orderRef = refOrder.child(Object(reqData).id);
+      orderRef.update({
+        status: 'không được duyệt',
+      });
+      return res.status(HttpStatus.OK).json({
+        message: 'Successfully disapprove',
+        statusCode: '200',
+      });
+    } else {
+      return res.status(HttpStatus.UNAUTHORIZED).json({
+        message: 'Unauthorize to perform this action',
+        statusCode: '401',
+      });
+    }
+  }
+
+  async approveExportPlan(reqData: any, res: any): Promise<any> {
+    const refAuthentication = db.ref('/Authentication');
+    const userRef = db.ref('/user');
+    const orderRef = db.ref('/order');
+    const userKey = [];
+    const userList = [];
+    await userRef.once('value', function (snapshot) {
+      let count = 0;
+      for (const key in snapshot.val()) {
+        userKey.push(key);
+      }
+      for (const value of Object(snapshot.val())) {
+        if (value != undefined && value != null) {
+          userList.push({
+            id: userKey[count],
+            username: Object(value).username,
+          });
+          count++;
+        }
+      }
+    });
+    const findUserId = (userId: any) => {
+      for (const value of userList) {
+        console.log(value);
+        if (userId == Object(value).username) {
+          return Object(value).id;
+        }
+      }
+    };
+    let isValid = false;
+    console.log(reqData);
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      const refExportPlan = db.ref('/exportPlan');
+      const exportPlanRef = refExportPlan.child(Object(reqData).id);
+      exportPlanRef.update({
+        status: 'chưa xong',
+      });
+      let childNumber: number;
+      await orderRef.once('value', function (snapshot) {
+        childNumber = snapshot.numChildren();
+      });
+      const tempGoods = Object(reqData).data.listGoods.map((item: any) => {
+        return {
+          typeId: item.typeId,
+          number: item.number,
+        };
+      });
+      await orderRef.child(String(childNumber + 1)).set({
+        providerId: Object(reqData).data.warehouseId,
+        manageId: Number(findUserId(Object(reqData).username)),
+        reason: Object(reqData).data.reason,
+        time: Object(reqData).time,
+        status: 'chưa xong',
+        warehouseId: Object(reqData).data.customerId,
+        listGoods: tempGoods,
+      });
+      return res.status(HttpStatus.OK).json({
+        message: 'Successfully approve',
+        statusCode: '200',
+      });
+    } else {
+      return res.status(HttpStatus.UNAUTHORIZED).json({
+        message: 'Unauthorize to perform this action',
+        statusCode: '401',
+      });
+    }
+  }
+
+  async disapproveExportPlan(reqData: any, res: any): Promise<any> {
+    const refAuthentication = db.ref('/Authentication');
+    let isValid = false;
+    console.log(reqData);
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      const refExportPlan = db.ref('/exportPlan');
+      const exportPlanRef = refExportPlan.child(Object(reqData).id);
+      exportPlanRef.update({
+        status: 'không được duyệt',
+      });
+      return res.status(HttpStatus.OK).json({
+        message: 'Successfully disapprove',
+        statusCode: '200',
+      });
+    } else {
+      return res.status(HttpStatus.UNAUTHORIZED).json({
+        message: 'Unauthorize to perform this action',
+        statusCode: '401',
+      });
+    }
   }
   async checkCapacityOrder(reqData: any, res: any): Promise<any> {
     const refAuthentication = db.ref('/Authentication');
@@ -1323,15 +1584,17 @@ export class AppService {
       });
     }
   }
-  async getOrder(reqData: any, res:any): Promise<any> {
+  async getOrder(reqData: any, res: any): Promise<any> {
     const db = admin.database();
     const userRef = db.ref('/user');
     const orderRef = db.ref('/order');
     const providerRef = db.ref('/Provider');
     const refAuthentication = db.ref('/Authentication');
+    const warehouseRef = db.ref('/warehouse');
     const keyList = [];
     const orderList = [];
     const providerKey = [];
+    const warehouseList = [];
     let index = 0;
     const providerList = [];
     let isValid = false;
@@ -1391,7 +1654,30 @@ export class AppService {
           }
         }
       };
+      await warehouseRef.once('value', function (snapshot) {
+        let count = 0;
+        for (const key in snapshot.val()) {
+          warehouseList.push(key);
+        }
+        for (const value of Object(snapshot.val())) {
+          if (value != undefined && value != null) {
+            warehouseList.push({
+              id: warehouseList[count],
+              name: Object(value).name,
+            });
+            count++;
+          }
+        }
+      });
 
+      const findWarehouseName = (provId: any) => {
+        const returnValue = '';
+        for (const value of warehouseList) {
+          if (provId == Object(value).id) {
+            return Object(value).name;
+          }
+        }
+      };
       const typeAndColorKey = [];
       const typeAndColorValue = [];
       const typeAndColorRef = db.ref('/TypeAndColor');
@@ -1424,6 +1710,12 @@ export class AppService {
           const cloneArr = snapshot.val().map((item: any) => {
             return item;
           });
+          const tempKey = [];
+          let tempCount = 0;
+          for (const key in cloneArr) {
+            tempKey.push(key);
+          }
+          console.log(tempKey);
           for (const value of Object(cloneArr)) {
             if (value != null && value != undefined) {
               if (khoList.indexOf(Object(value).warehouseId) != -1) {
@@ -1442,30 +1734,35 @@ export class AppService {
                   await handleAdd();
                 };
                 handleData();
-
                 if (Object(value).reason === 'Mua hàng') {
-                  console.log(Object(value.listGoods));
+                  console.log('mua', tempKey[tempCount], Object(value).time);
                   orderList.push({
+                    id: tempKey[tempCount],
                     listGoods: Object(value).listGoods,
                     reason: Object(value).reason,
                     manageId: Object(value).manageId,
                     providerId: Object(value).providerId,
+                    status: Object(value).status,
                     providerName: findProviderName(Object(value).providerId),
                     time: Object(value).time,
                     warehouseId: Object(value).warehouseId,
                   });
-                } else if (Object(value.reason) === 'Chuyển kho') {
+                } else if (Object(value.reason) == 'Chuyển kho') {
+                  console.log('chuyen', tempKey[tempCount]);
                   orderList.push({
+                    id: tempKey[tempCount],
                     listGoods: Object(value).listGoods,
                     reason: Object(value).reason,
                     manageId: Object(value).manageId,
                     providerId: Object(value).providerId,
-                    providerName: 'Kho ' + Object(value).providerId,
+                    status: Object(value).status,
+                    providerName: findWarehouseName(Object(value).providerId),
                     time: Object(value).time,
                     warehouseId: Object(value).warehouseId,
                   });
                 }
               }
+              tempCount++;
             }
           }
         });
@@ -1475,7 +1772,7 @@ export class AppService {
       return res.status(HttpStatus.OK).json({
         message: 'Thành công',
         statusCode: '200',
-        data:orderList,
+        data: orderList,
       });
     }
     return res.status(HttpStatus.UNAUTHORIZED).json({
@@ -1483,7 +1780,171 @@ export class AppService {
       statusCode: '401',
     });
   }
-  async getImport(reqData: any, res:any): Promise<any> {
+
+  async getUnapprovalOrder(reqData: any, res: any): Promise<any> {
+    const db = admin.database();
+    const userRef = db.ref('/user');
+    const orderRef = db.ref('/order');
+    const providerRef = db.ref('/Provider');
+    const refAuthentication = db.ref('/Authentication');
+    const warehouseRef = db.ref('/warehouse');
+    const keyList = [];
+    const orderList = [];
+    const providerKey = [];
+    const warehouseList = [];
+    let index = 0;
+    const providerList = [];
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      let khoWorking = [];
+      await userRef.once('value', function (snapshot) {
+        for (const key in snapshot.val()) {
+          keyList.push(key);
+        }
+      });
+      await userRef.once('value', function (snapshot) {
+        for (const value of Object(snapshot.val())) {
+          if (value != null && value != undefined) {
+            if (reqData.username === Object(value).username) {
+              khoWorking = Object(value).workAt;
+              break;
+            }
+            index++;
+          }
+        }
+      });
+      const khoList = khoWorking.map((item) => {
+        if (item) {
+          return item.khoId;
+        }
+      });
+      await warehouseRef.once('value', function (snapshot) {
+        let count = 0;
+        for (const key in snapshot.val()) {
+          warehouseList.push(key);
+        }
+        for (const value of Object(snapshot.val())) {
+          if (value != undefined && value != null) {
+            warehouseList.push({
+              id: warehouseList[count],
+              name: Object(value).name,
+            });
+            count++;
+          }
+        }
+      });
+
+      const findWarehouseName = (provId: any) => {
+        const returnValue = '';
+        for (const value of warehouseList) {
+          if (provId == Object(value).id) {
+            return Object(value).name;
+          }
+        }
+      };
+      const typeAndColorKey = [];
+      const typeAndColorValue = [];
+      const typeAndColorRef = db.ref('/TypeAndColor');
+      await typeAndColorRef.once('value', function (snapshot) {
+        let count = 0;
+        for (const key in snapshot.val()) {
+          typeAndColorKey.push(key);
+        }
+        for (const value of snapshot.val()) {
+          if (value !== undefined && value != null) {
+            typeAndColorValue.push({
+              id: typeAndColorKey[count],
+              type: value.type,
+              color: value.color,
+            });
+            count = count + 1;
+          }
+        }
+      });
+      const findTypeAndColor = (id: any) => {
+        for (const value of typeAndColorValue) {
+          if (id == value.id) {
+            return { type: value.type, color: value.color };
+          }
+        }
+      };
+
+      const handleData = async () => {
+        await orderRef.once('value', async function (snapshot) {
+          const cloneArr = snapshot.val().map((item: any) => {
+            return item;
+          });
+          const tempKey = [];
+          let tempCount = 0;
+          for (const key in cloneArr) {
+            tempKey.push(key);
+          }
+          console.log(tempKey);
+          for (const value of Object(cloneArr)) {
+            if (value != null && value != undefined) {
+              if (
+                khoList.indexOf(Object(value).providerId) != -1 &&
+                Object(value).reason == 'Chuyển kho' &&
+                Object(value).status == 'chưa duyệt'
+              ) {
+                const tempArray = Object(value).listGoods.map(
+                  (item: any) => item,
+                );
+
+                const handleData = async () => {
+                  const handleAdd = async () => {
+                    for (const temp of Object(tempArray)) {
+                      if (temp != undefined && temp != null) {
+                        temp.typeAndColor = findTypeAndColor(temp.typeId);
+                      }
+                    }
+                  };
+                  await handleAdd();
+                };
+                handleData();
+                orderList.push({
+                  id: tempKey[tempCount],
+                  listGoods: Object(value).listGoods,
+                  reason: Object(value).reason,
+                  manageId: Object(value).manageId,
+                  warehouseId: Object(value).providerId,
+                  warehouseName: findWarehouseName(Object(value).providerId),
+                  status: Object(value).status,
+                  providerName: findWarehouseName(Object(value).warehouseId),
+                  time: Object(value).time,
+                  providerId: Object(value).warehouseId,
+                });
+              }
+
+              tempCount++;
+            }
+          }
+        });
+      };
+      await handleData();
+
+      return res.status(HttpStatus.OK).json({
+        message: 'Thành công',
+        statusCode: '200',
+        data: orderList,
+      });
+    }
+    return res.status(HttpStatus.UNAUTHORIZED).json({
+      message: 'Không có quyền thực hiện',
+      statusCode: '401',
+    });
+  }
+  async getImport(reqData: any, res: any): Promise<any> {
     const db = admin.database();
     const userRef = db.ref('/user');
     const importRef = db.ref('/import');
@@ -1512,7 +1973,6 @@ export class AppService {
               for (const val of Object(value).workAt) {
                 if (val) {
                   khoList.push(val.khoId);
-                  console.log('khoList', khoList);
                 }
               }
             }
@@ -1562,7 +2022,6 @@ export class AppService {
           }
         }
       });
-      console.log(userList);
       const findUserName = (userId: any) => {
         for (const value of userList) {
           if (userId == Object(value).id) {
@@ -1592,7 +2051,6 @@ export class AppService {
             const refListGoods = db.ref(
               '/import/' + importKey[countTemp] + '/listGoods',
             );
-            console.log('counttemp', countTemp);
             await refListGoods.once('value', function (snapshotRef) {
               let item: any;
               for (item of Object.values(snapshotRef.val())) {
@@ -1629,7 +2087,7 @@ export class AppService {
       return res.status(HttpStatus.OK).json({
         message: 'Thành công',
         statusCode: '200',
-        data:importList,
+        data: importList,
       });
     }
     return res.status(HttpStatus.UNAUTHORIZED).json({
@@ -1638,7 +2096,7 @@ export class AppService {
     });
   }
 
-  async getExport(reqData: any, res:any): Promise<any> {
+  async getExport(reqData: any, res: any): Promise<any> {
     const username = 'kdat0310';
     const db = admin.database();
     const userRef = db.ref('/user');
@@ -1826,7 +2284,7 @@ export class AppService {
       return res.status(HttpStatus.OK).json({
         message: 'Thành công',
         statusCode: '200',
-        data:exportList,
+        data: exportList,
       });
     }
     return res.status(HttpStatus.UNAUTHORIZED).json({
@@ -1835,7 +2293,7 @@ export class AppService {
     });
   }
   // lấy danh sách kế hoạch xuất theo của quản lý
-  async getManagerExportPlans(reqData: any, res:any): Promise<any> {
+  async getManagerExportPlans(reqData: any, res: any): Promise<any> {
     const username = 'kdat0310';
     const db = admin.database();
     const userRef = db.ref('/user');
@@ -1955,6 +2413,7 @@ export class AppService {
                   reason: Object(value).reason,
                   manageId: Object(value).manageId,
                   customerId: Object(value).customerId,
+                  status: Object(value).status,
                   customerName: findcustomerName(Object(value).customerId),
                   time: Object(value).time,
                   warehouseId: Object(value).warehouseId,
@@ -1965,6 +2424,7 @@ export class AppService {
                   reason: Object(value).reason,
                   manageId: Object(value).manageId,
                   customerId: Object(value).customerId,
+                  status: Object(value).status,
                   customerName: 'Kho ' + Object(value).customerId,
                   time: Object(value).time,
                   warehouseId: Object(value).warehouseId,
@@ -1977,7 +2437,163 @@ export class AppService {
       return res.status(HttpStatus.OK).json({
         message: 'Thành công',
         statusCode: '200',
-        data:exportPlanList,
+        data: exportPlanList,
+      });
+    }
+    return res.status(HttpStatus.UNAUTHORIZED).json({
+      message: 'Không có quyền lấy thông tin!',
+      statusCode: '401',
+    });
+  }
+  async getUnapprovalExportPlan(reqData: any, res: any): Promise<any> {
+    const username = 'kdat0310';
+    const db = admin.database();
+    const userRef = db.ref('/user');
+    const exportPlanRef = db.ref('/exportPlan');
+    const warehouseRef = db.ref('/warehouse');
+    const customerRef = db.ref('/customer');
+    const refAuthentication = db.ref('/Authentication');
+    const keyList = [];
+    const exportPlanList = [];
+    const warehouseList = [];
+    const customerKey = [];
+    let index = 0;
+    const customerList = [];
+    let isValid = false;
+    const snapshot = await refAuthentication.once('value');
+    snapshot.forEach((child) => {
+      const val = child.val();
+      if (
+        val.username === Object(reqData).username &&
+        val.token === Object(reqData).token
+      ) {
+        isValid = true;
+      }
+    });
+    if (isValid) {
+      let khoWorking = [];
+      await userRef.once('value', function (snapshot) {
+        for (const key in snapshot.val()) {
+          keyList.push(key);
+        }
+      });
+      await userRef.once('value', function (snapshot) {
+        for (const value of Object(snapshot.val())) {
+          if (value != null && value != undefined) {
+            if (reqData.username === Object(value).username) {
+              khoWorking = Object(value).workAt;
+              break;
+            }
+            index++;
+          }
+        }
+      });
+      const khoList = khoWorking.map((item) => {
+        if (item) {
+          return item.khoId;
+        }
+      });
+
+      const typeAndColorKey = [];
+      const typeAndColorValue = [];
+      const typeAndColorRef = db.ref('/TypeAndColor');
+      await typeAndColorRef.once('value', function (snapshot) {
+        let count = 0;
+        for (const key in snapshot.val()) {
+          typeAndColorKey.push(key);
+        }
+        for (const value of snapshot.val()) {
+          if (value !== undefined && value != null) {
+            typeAndColorValue.push({
+              id: typeAndColorKey[count],
+              type: value.type,
+              color: value.color,
+            });
+            count = count + 1;
+          }
+        }
+      });
+      const findTypeAndColor = (id: any) => {
+        for (const value of typeAndColorValue) {
+          if (id == value.id) {
+            return { type: value.type, color: value.color };
+          }
+        }
+      };
+
+      await warehouseRef.once('value', function (snapshot) {
+        let count = 0;
+        for (const key in snapshot.val()) {
+          warehouseList.push(key);
+        }
+        for (const value of Object(snapshot.val())) {
+          if (value != undefined && value != null) {
+            warehouseList.push({
+              id: warehouseList[count],
+              name: Object(value).name,
+            });
+            count++;
+          }
+        }
+      });
+
+      const findWarehouseName = (provId: any) => {
+        const returnValue = '';
+        for (const value of warehouseList) {
+          if (provId == Object(value).id) {
+            return Object(value).name;
+          }
+        }
+      };
+      await exportPlanRef.once('value', function (snapshot) {
+        const tempKey = [];
+        let tempCount = 0;
+        for (const key in snapshot.val()) {
+          tempKey.push(key);
+        }
+        for (const value of Object(snapshot.val())) {
+          if (value != null && value != undefined) {
+            if (
+              khoList.indexOf(Object(value).customerId) != -1 &&
+              Object(value).status == 'chưa duyệt'
+            ) {
+              const tempArray = Object(value).listGoods.map(
+                (item: any) => item,
+              );
+
+              const handleData = async () => {
+                const handleAdd = async () => {
+                  for (const temp of Object(tempArray)) {
+                    if (temp != undefined && temp != null) {
+                      temp.typeAndColor = findTypeAndColor(temp.typeId);
+                    }
+                  }
+                };
+                await handleAdd();
+              };
+              handleData();
+
+              exportPlanList.push({
+                id: tempKey[tempCount],
+                listGoods: Object(value).listGoods,
+                reason: Object(value).reason,
+                manageId: Object(value).manageId,
+                customerId: Object(value).customerId,
+                status: Object(value).status,
+                customerName: findWarehouseName(Object(value).customerId),
+                time: Object(value).time,
+                warehouseId: Object(value).warehouseId,
+                warehouseName: findWarehouseName(Object(value).warehouseId),
+              });
+            }
+            tempCount++;
+          }
+        }
+      });
+      return res.status(HttpStatus.OK).json({
+        message: 'Thành công',
+        statusCode: '200',
+        data: exportPlanList,
       });
     }
     return res.status(HttpStatus.UNAUTHORIZED).json({
@@ -1986,9 +2602,10 @@ export class AppService {
     });
   }
   // Tạo phiếu kế hoạch xuất hàng (quản lý)
-  async postExportPlan(exportPlanInfo: any, res:any): Promise<any> {
+  async postExportPlan(exportPlanInfo: any, res: any): Promise<any> {
     const db = admin.database();
     const ref = db.ref('/exportPlan');
+    const refOrder = db.ref('/order');
     const refCustomer = db.ref('/customer');
     const refUser = db.ref('/user');
     const refWarehouse = db.ref('/warehouse');
@@ -1996,6 +2613,7 @@ export class AppService {
     const userListKey = [];
     const customerListKey = [];
     const typeListKey = [];
+    const userWarehouseList = [];
     let reason = '';
     let customerId = 0;
     let userId = 0;
@@ -2042,6 +2660,11 @@ export class AppService {
           Object(value).username === Object(exportPlanInfo).username
         ) {
           userId = userListKey[temp];
+          for (const item of Object(value).workAt) {
+            if (item) {
+              userWarehouseList.push(item.khoId);
+            }
+          }
         }
         temp++;
       }
@@ -2061,34 +2684,69 @@ export class AppService {
           }
         });
       } else if (Object(exportPlanInfo).reason === 'Chuyển kho') {
-        await refWarehouse.once('value', function (snapshot) {
-          for (const key in snapshot.val()) {
-            customerListKey.push(key);
-            if (Object(exportPlanInfo).customerName.slice(-1) === key) {
-              customerId = Number(key);
-              break;
-            }
+        const refWarehouseList = await refWarehouse.once('value');
+        refWarehouseList.forEach((child) => {
+          const val = child.val();
+          const key = child.key;
+          if (Object(val).name === Object(exportPlanInfo).customerName) {
+            customerId = Number(key);
           }
         });
       }
     };
-    getCustomerId();
+    await getCustomerId();
+    if (
+      Object(exportPlanInfo).reason == 'Chuyển kho' &&
+      userWarehouseList.indexOf(Number(customerId)) == -1
+    ) {
+      await ref.once('value', function (snapshot) {
+        childNumber = snapshot.numChildren();
+      });
+      await ref.child(String(childNumber + 1)).set({
+        customerId: Number(customerId),
+        manageId: Number(userId),
+        reason: Object(exportPlanInfo).reason,
+        time: Object(exportPlanInfo).time,
+        status: 'chưa duyệt',
+        warehouseId: Number(Object(exportPlanInfo).khoId),
+        listGoods: listOfGood,
+      });
+    } else {
+      await ref.once('value', function (snapshot) {
+        childNumber = snapshot.numChildren();
+      });
+      await ref.child(String(childNumber + 1)).set({
+        customerId: Number(customerId),
+        manageId: Number(userId),
+        reason: Object(exportPlanInfo).reason,
+        time: Object(exportPlanInfo).time,
+        status: 'chưa xong',
+        warehouseId: Number(Object(exportPlanInfo).khoId),
+        listGoods: listOfGood,
+      });
+    }
+    if (
+      Object(exportPlanInfo).reason == 'Chuyển kho' &&
+      userWarehouseList.indexOf(Number(customerId) != -1)
+    ) {
+      await refOrder.once('value', function (snapshot) {
+        childNumber = snapshot.numChildren();
+      });
+      await refOrder.child(String(childNumber + 1)).set({
+        providerId: Number(Object(exportPlanInfo).khoId),
+        manageId: Number(userId),
+        reason: Object(exportPlanInfo).reason,
+        time: Object(exportPlanInfo).time,
+        warehouseId: Number(customerId),
+        status: 'chưa xong',
+        listGoods: listOfGood,
+      });
+    }
 
-    await ref.once('value', function (snapshot) {
-      childNumber = snapshot.numChildren();
-    });
-    await ref.child(String(childNumber + 1)).set({
-      customerId: Number(customerId),
-      manageId: Number(userId),
-      reason: Object(exportPlanInfo).reason,
-      time: Object(exportPlanInfo).time,
-      warehouseId: Number(Object(exportPlanInfo).khoId),
-      listGoods: listOfGood,
-    });
     return res.status(HttpStatus.OK).json({
       message: 'Thành công',
       statusCode: '200',
-      data:{
+      data: {
         customerId: Number(customerId),
         manageId: Number(userId),
         reason: Object(exportPlanInfo).reason,
@@ -2130,7 +2788,7 @@ export class AppService {
         name: newUserInformation.name,
         password: '123456',
         phone: newUserInformation.phone,
-        role:newUserInformation.role,
+        role: newUserInformation.role,
         sex: newUserInformation.sex,
         username: newUserInformation.username,
         workAt: workAtList,
@@ -2139,7 +2797,7 @@ export class AppService {
       return res.status(HttpStatus.CREATED).json({
         message: 'Thành công tạo người dùng!',
         statusCode: '201',
-        data:{
+        data: {
           birthday: newUserInformation.dob,
           name: newUserInformation.name,
           password: '123456',
@@ -2147,7 +2805,7 @@ export class AppService {
           sex: newUserInformation.sex,
           username: newUserInformation.username,
           workAt: workAtList,
-        }
+        },
       });
     }
 
@@ -2193,11 +2851,11 @@ export class AppService {
       return res.status(HttpStatus.CREATED).json({
         message: 'Thành công tạo người dùng!',
         statusCode: '201',
-        data:{
+        data: {
           name: newCustomerInformation.name,
           address: newCustomerInformation.address,
           phone: newCustomerInformation.phoneNumber,
-        }
+        },
       });
     }
 
@@ -2242,11 +2900,11 @@ export class AppService {
       return res.status(HttpStatus.CREATED).json({
         message: 'Thành công tạo người dùng!',
         statusCode: '201',
-        data:{
+        data: {
           name: newProviderInformation.name,
           address: newProviderInformation.address,
           phone: newProviderInformation.phoneNumber,
-        }
+        },
       });
     }
 
@@ -2300,7 +2958,7 @@ export class AppService {
       return res.status(HttpStatus.CREATED).json({
         message: 'Thành công tạo kho!',
         statusCode: '201',
-        data:{
+        data: {
           name: newWarehouseInformation.name,
           address: newWarehouseInformation.address,
           square: newWarehouseInformation.square,
@@ -2309,7 +2967,7 @@ export class AppService {
           time: '8:00 - 21:00',
           goods: new Array(1).fill(0),
           status: 'Bình thường',
-        }
+        },
       });
     }
 
@@ -2443,7 +3101,7 @@ export class AppService {
     return 'Không hợp lệ';
   }
 
-  async getNotifications(data: any, res:any): Promise<any> {
+  async getNotifications(data: any, res: any): Promise<any> {
     const receiverId = data.userId;
     const warehouseId = await this.getKhoId(receiverId);
     const ref = db.ref('/Notification');
@@ -2471,7 +3129,7 @@ export class AppService {
     return res.status(HttpStatus.OK).json({
       message: 'Thành công',
       statusCode: '200',
-      data:result,
+      data: result,
     });
   }
 
@@ -2835,7 +3493,7 @@ export class AppService {
     return result;
   }
 
-  async changeCapacity(reqData:any, res:any){
+  async changeCapacity(reqData: any, res: any) {
     const refAuthentication = db.ref('/Authentication');
     const refWarehouse = db.ref('/warehouse');
     let isValid = false;
@@ -2844,8 +3502,8 @@ export class AppService {
       const val = child.val();
       if (
         val.username === Object(reqData).username &&
-        val.token === Object(reqData).token && 
-        Object(reqData).role == "manager"
+        val.token === Object(reqData).token &&
+        Object(reqData).role == 'manager'
       ) {
         isValid = true;
       }
@@ -2853,20 +3511,20 @@ export class AppService {
     if (isValid) {
       const warehouseRef = refWarehouse.child(Object(reqData).warehouseId);
       warehouseRef.update({
-        capacityEachType:Object(reqData).eachType,
-        capacityWarehouse:Object(reqData).warehouse,
-      })
+        capacityEachType: Object(reqData).eachType,
+        capacityWarehouse: Object(reqData).warehouse,
+      });
       return res.status(HttpStatus.OK).json({
         message: {
-          capacityEachType:Object(reqData).eachType,
-          capacityWarehouse:Object(reqData).warehouse,
+          capacityEachType: Object(reqData).eachType,
+          capacityWarehouse: Object(reqData).warehouse,
         },
         statusCode: '200',
       });
     }
     return res.status(HttpStatus.UNAUTHORIZED).json({
-      message: "Unauthorized",
-      data:reqData,
+      message: 'Unauthorized',
+      data: reqData,
       statusCode: '401',
     });
   }
