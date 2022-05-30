@@ -1718,7 +1718,11 @@ export class AppService {
           console.log(tempKey);
           for (const value of Object(cloneArr)) {
             if (value != null && value != undefined) {
-              if (khoList.indexOf(Object(value).warehouseId) != -1) {
+              if (
+                khoList.indexOf(Object(value).warehouseId) != -1 &&
+                Object(value).status != 'chưa duyệt' &&
+                Object(value).status != 'không được duyệt'
+              ) {
                 const tempArray = Object(value).listGoods.map(
                   (item: any) => item,
                 );
@@ -1746,6 +1750,7 @@ export class AppService {
                     providerName: findProviderName(Object(value).providerId),
                     time: Object(value).time,
                     warehouseId: Object(value).warehouseId,
+                    warehouseName: findWarehouseName(Object(value).warehouseId),
                   });
                 } else if (Object(value.reason) == 'Chuyển kho') {
                   console.log('chuyen', tempKey[tempCount]);
@@ -1759,6 +1764,7 @@ export class AppService {
                     providerName: findWarehouseName(Object(value).providerId),
                     time: Object(value).time,
                     warehouseId: Object(value).warehouseId,
+                    warehouseName: findWarehouseName(Object(value).warehouseId),
                   });
                 }
               }
@@ -1951,6 +1957,8 @@ export class AppService {
     const refAuthentication = db.ref('/Authentication');
     const keyList = [];
     const providerKey = [];
+    const warehouseList = [];
+    const warehouseRef = db.ref('/warehouse');
     const khoList = [];
     let index = 0;
     const providerList = [];
@@ -2029,6 +2037,30 @@ export class AppService {
           }
         }
       };
+      await warehouseRef.once('value', function (snapshot) {
+        let count = 0;
+        for (const key in snapshot.val()) {
+          warehouseList.push(key);
+        }
+        for (const value of Object(snapshot.val())) {
+          if (value != undefined && value != null) {
+            warehouseList.push({
+              id: warehouseList[count],
+              name: Object(value).name,
+            });
+            count++;
+          }
+        }
+      });
+
+      const findWarehouseName = (provId: any) => {
+        const returnValue = '';
+        for (const value of warehouseList) {
+          if (provId == Object(value).id) {
+            return Object(value).name;
+          }
+        }
+      };
       const importList = [];
       const importKey = [];
       let count = 0;
@@ -2076,6 +2108,7 @@ export class AppService {
               name: findUserName(Object(value).importEmployee),
               orderId: Object(value).orderId,
               warehouseId: Object(value).warehouseId,
+              warehouseName: findWarehouseName(Object(value).warehouseId),
               time: Object(value).time,
               note: Object(value).note,
             });
@@ -2102,7 +2135,8 @@ export class AppService {
     const userRef = db.ref('/user');
     const exportRef = db.ref('/export');
     const refAuthentication = db.ref('/Authentication');
-
+    const warehouseList = [];
+    const warehouseRef = db.ref('/warehouse');
     const khoList = [];
     let index = 0;
 
@@ -2176,6 +2210,30 @@ export class AppService {
         const returnValue = '';
         for (const value of userList) {
           if (userId == Object(value).id) {
+            return Object(value).name;
+          }
+        }
+      };
+      await warehouseRef.once('value', function (snapshot) {
+        let count = 0;
+        for (const key in snapshot.val()) {
+          warehouseList.push(key);
+        }
+        for (const value of Object(snapshot.val())) {
+          if (value != undefined && value != null) {
+            warehouseList.push({
+              id: warehouseList[count],
+              name: Object(value).name,
+            });
+            count++;
+          }
+        }
+      });
+
+      const findWarehouseName = (provId: any) => {
+        const returnValue = '';
+        for (const value of warehouseList) {
+          if (provId == Object(value).id) {
             return Object(value).name;
           }
         }
@@ -2273,6 +2331,7 @@ export class AppService {
               name: findUserName(Object(value).exportEmployee),
               exportPlanId: Object(value).exportPlanId,
               warehouseId: Object(value).warehouseId,
+              warehouseName: findWarehouseName(Object(value).warehouseId),
               time: Object(value).time,
               note: Object(value).note,
             });
@@ -2302,7 +2361,9 @@ export class AppService {
     const refAuthentication = db.ref('/Authentication');
     const keyList = [];
     const exportPlanList = [];
+    const warehouseRef = db.ref('/warehouse');
     const customerKey = [];
+    const warehouseList = [];
     let index = 0;
     const customerList = [];
     let isValid = false;
@@ -2388,10 +2449,38 @@ export class AppService {
           }
         }
       };
+      await warehouseRef.once('value', function (snapshot) {
+        let count = 0;
+        for (const key in snapshot.val()) {
+          warehouseList.push(key);
+        }
+        for (const value of Object(snapshot.val())) {
+          if (value != undefined && value != null) {
+            warehouseList.push({
+              id: warehouseList[count],
+              name: Object(value).name,
+            });
+            count++;
+          }
+        }
+      });
+
+      const findWarehouseName = (provId: any) => {
+        const returnValue = '';
+        for (const value of warehouseList) {
+          if (provId == Object(value).id) {
+            return Object(value).name;
+          }
+        }
+      };
       await exportPlanRef.once('value', function (snapshot) {
         for (const value of Object(snapshot.val())) {
           if (value != null && value != undefined) {
-            if (khoList.indexOf(Object(value).warehouseId) != -1) {
+            if (
+              khoList.indexOf(Object(value).warehouseId) != -1 &&
+              Object(value).status != 'chưa duyệt' &&
+              Object(value).status != 'không được duyệt'
+            ) {
               const tempArray = Object(value).listGoods.map(
                 (item: any) => item,
               );
@@ -2417,6 +2506,7 @@ export class AppService {
                   customerName: findcustomerName(Object(value).customerId),
                   time: Object(value).time,
                   warehouseId: Object(value).warehouseId,
+                  warehouseName: findWarehouseName(Object(value).warehouseId),
                 });
               } else if (Object(value).reason === 'Chuyển kho') {
                 exportPlanList.push({
@@ -2425,9 +2515,10 @@ export class AppService {
                   manageId: Object(value).manageId,
                   customerId: Object(value).customerId,
                   status: Object(value).status,
-                  customerName: 'Kho ' + Object(value).customerId,
+                  customerName: findWarehouseName(Object(value).customerId),
                   time: Object(value).time,
                   warehouseId: Object(value).warehouseId,
+                  warehouseName: findWarehouseName(Object(value).warehouseId),
                 });
               }
             }
@@ -3181,98 +3272,97 @@ export class AppService {
         const key = child.key;
         const value = child.val();
         const goods = [];
-        if (key == '1' || key == '2') {
-          let maxDateStock = 0;
-          let averageDateStock = 0;
-          let numberOfProduct = 0;
-          for (const item of value) {
-            if (item && item.importTime && item.exportTime) {
-              const date = item.importTime;
-              const year = date.substr(date.length - 4);
-              const month = date[10] + date[11];
-              const hour = date[0] + date[1];
-              const day = date[7] + date[8];
-              const minute = date[3] + date[4];
-              const newDate = new Date(
-                Number(year),
-                Number(month) - 1,
-                Number(day),
-                Number(hour),
-                Number(minute),
+
+        let maxDateStock = 0;
+        let averageDateStock = 0;
+        let numberOfProduct = 0;
+        for (const item of value) {
+          if (item && item.importTime && item.exportTime) {
+            const date = item.importTime;
+            const year = date.substr(date.length - 4);
+            const month = date[10] + date[11];
+            const hour = date[0] + date[1];
+            const day = date[7] + date[8];
+            const minute = date[3] + date[4];
+            const newDate = new Date(
+              Number(year),
+              Number(month) - 1,
+              Number(day),
+              Number(hour),
+              Number(minute),
+            );
+            let today = new Date();
+            if (item.exportTime != 'none') {
+              const edate = item.exportTime;
+              const eyear = edate.substr(date.length - 4);
+              const emonth = edate[10] + edate[11];
+              const ehour = edate[0] + edate[1];
+              const eday = edate[7] + edate[8];
+              const eminute = edate[3] + edate[4];
+              const enewDate = new Date(
+                Number(eyear),
+                Number(emonth) - 1,
+                Number(eday),
+                Number(ehour),
+                Number(eminute),
               );
-              let today = new Date();
-              if (item.exportTime != 'none') {
-                const edate = item.exportTime;
-                const eyear = edate.substr(date.length - 4);
-                const emonth = edate[10] + edate[11];
-                const ehour = edate[0] + edate[1];
-                const eday = edate[7] + edate[8];
-                const eminute = edate[3] + edate[4];
-                const enewDate = new Date(
-                  Number(eyear),
-                  Number(emonth) - 1,
-                  Number(eday),
-                  Number(ehour),
-                  Number(eminute),
-                );
-                today = enewDate;
-              }
-
-              let difference = today.getTime() - newDate.getTime();
-              difference = Math.ceil(difference / (1000 * 3600 * 24));
-
-              if (difference < 0) {
-                difference = Math.abs(difference);
-              }
-              averageDateStock = averageDateStock + difference;
-              numberOfProduct++;
-              console.log(difference, averageDateStock, numberOfProduct);
-              if (difference > maxDateStock) {
-                maxDateStock = difference;
-              }
+              today = enewDate;
             }
-            if (item && item.status == 'chưa bán') {
-              let isHave = true;
-              if (goods.length == 0) {
-                goods.push({
-                  importTime: item.importTime,
-                  lotNumber: String(item.lotNumber),
-                  number: 1,
-                  totalLength: Number(item.length),
-                });
-              } else {
-                isHave = goods.some((element) => {
-                  if (
-                    String(element.importTime) == String(item.importTime) &&
-                    String(element.lotNumber) == String(item.lotNumber)
-                  ) {
-                    element.number = ++element.number;
-                    element.totalLength =
-                      Number(element.totalLength) + Number(item.length);
-                  }
-                  return (
-                    String(element.importTime) == String(item.importTime) &&
-                    String(element.lotNumber) == String(item.lotNumber)
-                  );
-                });
-              }
-              if (isHave == false) {
-                goods.push({
-                  importTime: item.importTime,
-                  lotNumber: String(item.lotNumber),
-                  number: 1,
-                  totalLength: Number(item.length),
-                });
-              }
+
+            let difference = today.getTime() - newDate.getTime();
+            difference = Math.ceil(difference / (1000 * 3600 * 24));
+
+            if (difference < 0) {
+              difference = Math.abs(difference);
+            }
+            averageDateStock = averageDateStock + difference;
+            numberOfProduct++;
+            console.log(difference, averageDateStock, numberOfProduct);
+            if (difference > maxDateStock) {
+              maxDateStock = difference;
             }
           }
-          result.push({
-            typeAndColor: findTypeAndColor(key),
-            maxDateStock: maxDateStock,
-            averageDateStock: averageDateStock / numberOfProduct,
-            listGoods: goods,
-          });
+          if (item && item.status == 'chưa bán') {
+            let isHave = true;
+            if (goods.length == 0) {
+              goods.push({
+                importTime: item.importTime,
+                lotNumber: String(item.lotNumber),
+                number: 1,
+                totalLength: Number(item.length),
+              });
+            } else {
+              isHave = goods.some((element) => {
+                if (
+                  String(element.importTime) == String(item.importTime) &&
+                  String(element.lotNumber) == String(item.lotNumber)
+                ) {
+                  element.number = ++element.number;
+                  element.totalLength =
+                    Number(element.totalLength) + Number(item.length);
+                }
+                return (
+                  String(element.importTime) == String(item.importTime) &&
+                  String(element.lotNumber) == String(item.lotNumber)
+                );
+              });
+            }
+            if (isHave == false) {
+              goods.push({
+                importTime: item.importTime,
+                lotNumber: String(item.lotNumber),
+                number: 1,
+                totalLength: Number(item.length),
+              });
+            }
+          }
         }
+        result.push({
+          typeAndColor: findTypeAndColor(key),
+          maxDateStock: maxDateStock,
+          averageDateStock: averageDateStock / numberOfProduct,
+          listGoods: goods,
+        });
       });
 
       return res.status(HttpStatus.OK).json({
