@@ -252,4 +252,14 @@ export class AppController {
   changeCapacity(@Req() data, @Res() res): any {
     return this.appService.changeCapacity(data.body, res);
   }
+
+  @Post('/getImported')
+  getImported(@Req() data): any {
+    return this.appService.getImported(data.body);
+  }
+
+  @Post('/getExported')
+  getExported(@Req() data): any {
+    return this.appService.getExported(data.body);
+  }
 }

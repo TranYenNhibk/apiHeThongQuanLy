@@ -117,6 +117,13 @@ export class AppService {
     await ref.once('value', function (snapshot) {
       TypeAndColor = snapshot.val();
     });
+    let warehouseName = [];
+    ref = db.ref('warehouse');
+    await ref.once('value', async function (snapshot) {
+      for(let i = 0; i < snapshot.val().length; i++){
+        if(snapshot.val()[i]) warehouseName.push(snapshot.val()[i].name);
+      }
+    })
     ref = db.ref('/customer/');
     var customerList;
     await ref.once('value', function (snapshot) {
@@ -131,9 +138,9 @@ export class AppService {
       // console.log(snapshot.val());
       for (let i = 1; i < snapshot.val().length; i++) {
         var listGoods = [];
-        if (snapshot.val()[i].warehouseId === data[0]) {
+        if (snapshot.val()[i].warehouseId === data[0] && snapshot.val()[i].status == 'chưa xong') {
           if (snapshot.val()[i].reason === 'Chuyển kho') {
-            customer = 'Kho ' + snapshot.val()[i].customerId;
+            customer = warehouseName[snapshot.val()[i].customerId - 1];
           } else {
             customer = customerList[snapshot.val()[i].customerId].name;
           }
@@ -169,6 +176,13 @@ export class AppService {
     await ref.once('value', function (snapshot) {
       TypeAndColor = snapshot.val();
     });
+    let warehouseName = [];
+    ref = db.ref('warehouse');
+    await ref.once('value', async function (snapshot) {
+      for(let i = 0; i < snapshot.val().length; i++){
+        if(snapshot.val()[i]) warehouseName.push(snapshot.val()[i].name);
+      }
+    })
     ref = db.ref('/Provider/');
     var providerList;
     await ref.once('value', function (snapshot) {
@@ -182,9 +196,11 @@ export class AppService {
     await ref.once('value', async function (snapshot) {
       for (let i = 1; i < snapshot.val().length; i++) {
         var listGoods = [];
-        if (snapshot.val()[i].warehouseId === data[0]) {
+        if (snapshot.val()[i].warehouseId === data[0] && snapshot.val()[i].status == "chưa xong") {
           if (snapshot.val()[i].reason === 'Chuyển kho') {
-            provider = 'Kho ' + snapshot.val()[i].providerId;
+            if(snapshot.val()[i].providerId - 1 >= 0)
+            provider = warehouseName[snapshot.val()[i].providerId - 1];
+            else provider = warehouseName[snapshot.val()[i].providerId];
           } else {
             provider = providerList[snapshot.val()[i].providerId].name;
           }
@@ -3617,5 +3633,120 @@ export class AppService {
       data: reqData,
       statusCode: '401',
     });
+  }async getImported(reqData: any): Promise<any> {
+    let result = [];
+    let orderId = reqData.orderId;
+    let ref = db.ref('/TypeAndColor');
+    let type = [];
+    await ref.once('value', function (snapshot) {
+      type = snapshot.val();
+    });
+    ref = db.ref('/user');
+    var user = [];
+    await ref.once('value', function (snapshot) {
+      for(let i = 0; i < snapshot.val().length; i++){
+        if(snapshot.val()[i]) user.push(snapshot.val()[i].name);
+      }
+    });
+    ref = db.ref('import');
+    let importList = [];
+    await ref.once('value', async function (snapshot) {
+      for(let i = 0; i < snapshot.val().length; i++){
+        if(snapshot.val()[i] && snapshot.val()[i].orderId == orderId){
+          importList.push(i);
+        }
+      }
+    });
+    for(let i = 0; i < importList.length; i++){
+      let typeLists = [];
+      ref = db.ref('/import/' + importList[i] + '/listGoods');
+      let importedType = [];
+      const snapshotImport = await ref.once('value');
+      snapshotImport.forEach((child) => {
+        importedType.push(child.key);
+      });
+      // console.log(importedType);
+      for(let j = 0; j < importedType.length; j++){
+        ref = db.ref('import/' + importList[i] + '/listGoods/' + importedType[j]);
+        await ref.once('value', async function (snapshot) {
+          // console.log(snapshot.val())
+          typeLists.push({
+            type: type[importedType[j]].type,
+            color: type[importedType[j]].color,
+            number: snapshot.val().length - 1
+          })
+        });
+      }
+      ref = db.ref('import/' + importList[i]);
+      await ref.once('value', async function (snapshot) {
+        result.push({
+        importId: importList[i],
+        importEmployee: user[snapshot.val().importEmployee - 1],
+        time: snapshot.val().time,
+        typeLists 
+      });
+      });
+    }
+    console.log(result[0]);
+    return result;
+  }
+
+  async getExported(reqData: any): Promise<any> {
+    let result = [];
+    let exportPlanId = reqData.exportPlanId;
+    let ref = db.ref('/TypeAndColor');
+    let type = [];
+    await ref.once('value', function (snapshot) {
+      type = snapshot.val();
+    });
+    ref = db.ref('/user');
+    var user = [];
+    await ref.once('value', function (snapshot) {
+      for(let i = 0; i < snapshot.val().length; i++){
+        if(snapshot.val()[i]) user.push(snapshot.val()[i].name);
+      }
+    });
+    ref = db.ref('export');
+    let exportList = [];
+    await ref.once('value', async function (snapshot) {
+      for(let i = 0; i < snapshot.val().length; i++){
+        if(snapshot.val()[i] && snapshot.val()[i].exportPlanId == exportPlanId){
+          exportList.push(i);
+        }
+      }
+    });
+    for(let i = 0; i < exportList.length; i++){
+      let typeLists = [];
+      ref = db.ref('/export/' + exportList[i] + '/list');
+      let exportedType = [];
+      const snapshotImport = await ref.once('value');
+      snapshotImport.forEach((child) => {
+        exportedType.push(child.key);
+      });
+      // console.log(importedType);
+      for(let j = 0; j < exportedType.length; j++){
+        ref = db.ref('export/' + exportList[i] + '/list/' + exportedType[j]);
+        await ref.once('value', async function (snapshot) {
+          // console.log(snapshot.val())
+          typeLists.push({
+            type: type[exportedType[j]].type,
+            color: type[exportedType[j]].color,
+            number: snapshot.val().length - 1
+          })
+        });
+      }
+      ref = db.ref('export/' + exportList[i]);
+      await ref.once('value', async function (snapshot) {
+        console.log(snapshot.val())
+        result.push({
+        exportId: exportList[i],
+        exportEmployee: user[snapshot.val().exportEmployee - 1],
+        time: snapshot.val().time,
+        typeLists 
+      });
+      });
+    }
+    console.log(result[0]);
+    return result;
   }
 }
