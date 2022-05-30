@@ -120,10 +120,10 @@ export class AppService {
     let warehouseName = [];
     ref = db.ref('warehouse');
     await ref.once('value', async function (snapshot) {
-      for(let i = 0; i < snapshot.val().length; i++){
-        if(snapshot.val()[i]) warehouseName.push(snapshot.val()[i].name);
+      for (let i = 0; i < snapshot.val().length; i++) {
+        if (snapshot.val()[i]) warehouseName.push(snapshot.val()[i].name);
       }
-    })
+    });
     ref = db.ref('/customer/');
     var customerList;
     await ref.once('value', function (snapshot) {
@@ -138,7 +138,10 @@ export class AppService {
       // console.log(snapshot.val());
       for (let i = 1; i < snapshot.val().length; i++) {
         var listGoods = [];
-        if (snapshot.val()[i].warehouseId === data[0] && snapshot.val()[i].status == 'chưa xong') {
+        if (
+          snapshot.val()[i].warehouseId === data[0] &&
+          snapshot.val()[i].status == 'chưa xong'
+        ) {
           if (snapshot.val()[i].reason === 'Chuyển kho') {
             customer = warehouseName[snapshot.val()[i].customerId - 1];
           } else {
@@ -179,10 +182,10 @@ export class AppService {
     let warehouseName = [];
     ref = db.ref('warehouse');
     await ref.once('value', async function (snapshot) {
-      for(let i = 0; i < snapshot.val().length; i++){
-        if(snapshot.val()[i]) warehouseName.push(snapshot.val()[i].name);
+      for (let i = 0; i < snapshot.val().length; i++) {
+        if (snapshot.val()[i]) warehouseName.push(snapshot.val()[i].name);
       }
-    })
+    });
     ref = db.ref('/Provider/');
     var providerList;
     await ref.once('value', function (snapshot) {
@@ -196,10 +199,13 @@ export class AppService {
     await ref.once('value', async function (snapshot) {
       for (let i = 1; i < snapshot.val().length; i++) {
         var listGoods = [];
-        if (snapshot.val()[i].warehouseId === data[0] && snapshot.val()[i].status == "chưa xong") {
+        if (
+          snapshot.val()[i].warehouseId === data[0] &&
+          snapshot.val()[i].status == 'chưa xong'
+        ) {
           if (snapshot.val()[i].reason === 'Chuyển kho') {
-            if(snapshot.val()[i].providerId - 1 >= 0)
-            provider = warehouseName[snapshot.val()[i].providerId - 1];
+            if (snapshot.val()[i].providerId - 1 >= 0)
+              provider = warehouseName[snapshot.val()[i].providerId - 1];
             else provider = warehouseName[snapshot.val()[i].providerId];
           } else {
             provider = providerList[snapshot.val()[i].providerId].name;
@@ -1130,6 +1136,7 @@ export class AppService {
   }
 
   async postOrder(orderInfo: any, res: any): Promise<any> {
+    console.log(orderInfo);
     console.log('order', orderInfo);
     const db = admin.database();
     const ref = db.ref('/order');
@@ -1215,27 +1222,32 @@ export class AppService {
           refTypeAndColor = db.ref('/TypeAndColor');
         }
       });
-
-      await refUser.once('value', function (snapshot) {
-        temp = 0;
+      const userRef = db.ref('/user');
+      const userKey = [];
+      const userList = [];
+      await userRef.once('value', function (snapshot) {
+        let count = 0;
         for (const key in snapshot.val()) {
-          userListKey.push(key);
+          userKey.push(key);
         }
-        for (const value of Object.values(snapshot.val())) {
-          if (
-            Object(value).name === Object(orderInfo).name &&
-            Object(value).username === Object(orderInfo).username
-          ) {
-            userId = userListKey[temp];
-            for (const item of Object(value).workAt) {
-              if (item) {
-                userWarehouseList.push(item.khoId);
-              }
-            }
+        for (const value of Object(snapshot.val())) {
+          if (value != undefined && value != null) {
+            userList.push({
+              id: userKey[count],
+              username: Object(value).username,
+            });
+            count++;
           }
-          temp++;
         }
       });
+      const findUserId = (userId: any) => {
+        for (const value of userList) {
+          console.log(value);
+          if (userId == Object(value).username) {
+            return Object(value).id;
+          }
+        }
+      };
       const getProviderId = async () => {
         if (Object(orderInfo).reason === 'Mua hàng') {
           await refProvider.once('value', function (snapshot) {
@@ -1271,7 +1283,7 @@ export class AppService {
         });
         await ref.child(String(childNumber + 1)).set({
           providerId: Number(provId),
-          manageId: Number(userId),
+          manageId: Number(findUserId(Object(orderInfo).username)),
           reason: Object(orderInfo).reason,
           time: Object(orderInfo).time,
           status: 'chưa duyệt',
@@ -1284,7 +1296,7 @@ export class AppService {
         });
         await ref.child(String(childNumber + 1)).set({
           providerId: Number(provId),
-          manageId: Number(userId),
+          manageId: Number(findUserId(Object(orderInfo).username)),
           reason: Object(orderInfo).reason,
           time: Object(orderInfo).time,
           status: 'chưa xong',
@@ -1302,7 +1314,7 @@ export class AppService {
         });
         await refExportPlan.child(String(childNumber + 1)).set({
           customerId: Number(Object(orderInfo).khoId),
-          manageId: Number(userId),
+          manageId: Number(findUserId(Object(orderInfo).username)),
           reason: Object(orderInfo).reason,
           time: Object(orderInfo).time,
           warehouseId: Number(provId),
@@ -1315,7 +1327,7 @@ export class AppService {
         statusCode: '200',
         data: {
           providerId: Number(provId),
-          manageId: Number(userId),
+          manageId: Number(findUserId(Object(orderInfo).username)),
           reason: Object(orderInfo).reason,
           time: Object(orderInfo).time,
           warehouseId: Number(Object(orderInfo).khoId),
@@ -3633,7 +3645,8 @@ export class AppService {
       data: reqData,
       statusCode: '401',
     });
-  }async getImported(reqData: any): Promise<any> {
+  }
+  async getImported(reqData: any): Promise<any> {
     let result = [];
     let orderId = reqData.orderId;
     let ref = db.ref('/TypeAndColor');
@@ -3644,20 +3657,20 @@ export class AppService {
     ref = db.ref('/user');
     var user = [];
     await ref.once('value', function (snapshot) {
-      for(let i = 0; i < snapshot.val().length; i++){
-        if(snapshot.val()[i]) user.push(snapshot.val()[i].name);
+      for (let i = 0; i < snapshot.val().length; i++) {
+        if (snapshot.val()[i]) user.push(snapshot.val()[i].name);
       }
     });
     ref = db.ref('import');
     let importList = [];
     await ref.once('value', async function (snapshot) {
-      for(let i = 0; i < snapshot.val().length; i++){
-        if(snapshot.val()[i] && snapshot.val()[i].orderId == orderId){
+      for (let i = 0; i < snapshot.val().length; i++) {
+        if (snapshot.val()[i] && snapshot.val()[i].orderId == orderId) {
           importList.push(i);
         }
       }
     });
-    for(let i = 0; i < importList.length; i++){
+    for (let i = 0; i < importList.length; i++) {
       let typeLists = [];
       ref = db.ref('/import/' + importList[i] + '/listGoods');
       let importedType = [];
@@ -3666,25 +3679,27 @@ export class AppService {
         importedType.push(child.key);
       });
       // console.log(importedType);
-      for(let j = 0; j < importedType.length; j++){
-        ref = db.ref('import/' + importList[i] + '/listGoods/' + importedType[j]);
+      for (let j = 0; j < importedType.length; j++) {
+        ref = db.ref(
+          'import/' + importList[i] + '/listGoods/' + importedType[j],
+        );
         await ref.once('value', async function (snapshot) {
           // console.log(snapshot.val())
           typeLists.push({
             type: type[importedType[j]].type,
             color: type[importedType[j]].color,
-            number: snapshot.val().length - 1
-          })
+            number: snapshot.val().length - 1,
+          });
         });
       }
       ref = db.ref('import/' + importList[i]);
       await ref.once('value', async function (snapshot) {
         result.push({
-        importId: importList[i],
-        importEmployee: user[snapshot.val().importEmployee - 1],
-        time: snapshot.val().time,
-        typeLists 
-      });
+          importId: importList[i],
+          importEmployee: user[snapshot.val().importEmployee - 1],
+          time: snapshot.val().time,
+          typeLists,
+        });
       });
     }
     console.log(result[0]);
@@ -3702,20 +3717,23 @@ export class AppService {
     ref = db.ref('/user');
     var user = [];
     await ref.once('value', function (snapshot) {
-      for(let i = 0; i < snapshot.val().length; i++){
-        if(snapshot.val()[i]) user.push(snapshot.val()[i].name);
+      for (let i = 0; i < snapshot.val().length; i++) {
+        if (snapshot.val()[i]) user.push(snapshot.val()[i].name);
       }
     });
     ref = db.ref('export');
     let exportList = [];
     await ref.once('value', async function (snapshot) {
-      for(let i = 0; i < snapshot.val().length; i++){
-        if(snapshot.val()[i] && snapshot.val()[i].exportPlanId == exportPlanId){
+      for (let i = 0; i < snapshot.val().length; i++) {
+        if (
+          snapshot.val()[i] &&
+          snapshot.val()[i].exportPlanId == exportPlanId
+        ) {
           exportList.push(i);
         }
       }
     });
-    for(let i = 0; i < exportList.length; i++){
+    for (let i = 0; i < exportList.length; i++) {
       let typeLists = [];
       ref = db.ref('/export/' + exportList[i] + '/list');
       let exportedType = [];
@@ -3724,26 +3742,26 @@ export class AppService {
         exportedType.push(child.key);
       });
       // console.log(importedType);
-      for(let j = 0; j < exportedType.length; j++){
+      for (let j = 0; j < exportedType.length; j++) {
         ref = db.ref('export/' + exportList[i] + '/list/' + exportedType[j]);
         await ref.once('value', async function (snapshot) {
           // console.log(snapshot.val())
           typeLists.push({
             type: type[exportedType[j]].type,
             color: type[exportedType[j]].color,
-            number: snapshot.val().length - 1
-          })
+            number: snapshot.val().length - 1,
+          });
         });
       }
       ref = db.ref('export/' + exportList[i]);
       await ref.once('value', async function (snapshot) {
-        console.log(snapshot.val())
+        console.log(snapshot.val());
         result.push({
-        exportId: exportList[i],
-        exportEmployee: user[snapshot.val().exportEmployee - 1],
-        time: snapshot.val().time,
-        typeLists 
-      });
+          exportId: exportList[i],
+          exportEmployee: user[snapshot.val().exportEmployee - 1],
+          time: snapshot.val().time,
+          typeLists,
+        });
       });
     }
     console.log(result[0]);
