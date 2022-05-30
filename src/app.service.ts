@@ -3601,6 +3601,8 @@ export class AppService {
                 snapshot.val()[k].length;
               result[j]['listFabric'][k - 1]['lotNumber'] =
                 snapshot.val()[k].lotNumber;
+              result[j]['listFabric'][k - 1]['importTime'] =
+                snapshot.val()[k].importTime;
               result[j]['listFabric'][k - 1]['status'] =
                 snapshot.val()[k].status;
             }
