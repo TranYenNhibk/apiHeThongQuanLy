@@ -702,6 +702,8 @@ export class AppService {
     const refAuthentication = db.ref('/Authentication');
     const userRef = db.ref('/user');
     const snapshot = await refAuthentication.once('value');
+    const warehouseRef = db.ref('/warehouse');
+    const warehouseList = [];
     let isValid = false;
     snapshot.forEach((child) => {
       const val = child.val();
@@ -728,6 +730,30 @@ export class AppService {
         }
       });
     }
+    await warehouseRef.once('value', function (snapshot) {
+      let count = 0;
+      for (const key in snapshot.val()) {
+        warehouseList.push(key);
+      }
+      for (const value of Object(snapshot.val())) {
+        if (value != undefined && value != null) {
+          warehouseList.push({
+            id: warehouseList[count],
+            name: Object(value).name,
+          });
+          count++;
+        }
+      }
+    });
+
+    const findWarehouseName = (provId: any) => {
+      const returnValue = '';
+      for (const value of warehouseList) {
+        if (provId == Object(value).id) {
+          return Object(value).name;
+        }
+      }
+    };
     const returnValue = [];
     for (const val of khoList) {
       let totalNumber = 0;
@@ -751,6 +777,7 @@ export class AppService {
       });
       returnValue.push({
         kho: 'Kho ' + val,
+        khoName: findWarehouseName(val),
         number: totalNumber,
         length: Math.round(totalLength * 100) / 100,
       });
